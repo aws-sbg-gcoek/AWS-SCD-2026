@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --dark: #23303E;
+    --dark2: #2D3C4E;
+    --dark3: #1a232f;
+    --teal: #01c1ac;
+    --mint: #D1E5CD;
+    --mint2: #CDE3CB;
+    --bg-sage: #D1E5CD;
+    --bg-light: #EFF0F3;
+    --white: #FAFAFA;
+    --green-hl: #a2e048;
+    --blue-hl: #38bdf8;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #EFF0F3;
+    color: #23303E;
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+/* Custom scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Intro terminal blinking cursor */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-cursor {
+  animation: cursorBlink 0.9s step-start infinite;
+}
+
+/* Smooth pulse for TBA items */
+@keyframes shimmerPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+.animate-shimmer {
+  animation: shimmerPulse 2s ease-in-out infinite;
+}
+

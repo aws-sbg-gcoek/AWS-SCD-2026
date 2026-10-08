@@ -1,0 +1,6 @@
+{
+  "name": "AWS Student Community Day Mysuru 2026",
+  "description": "Official responsive website for AWS Student Community Day Mysuru 2026 at VVCE Mysuru with keynote speakers, tickets, workshops, schedule, and badge.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
