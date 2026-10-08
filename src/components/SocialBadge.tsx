@@ -121,10 +121,10 @@ export default function SocialBadge() {
 
     try {
       const isPost = activeTab === 'POST';
-      // In POST mode: canvas is 1200 x 960 (4:3.2) with black pillarboxes
+      // In POST mode: canvas is 1080 x 1080 (Square)
       // In STORY mode: canvas is 1080 x 1920 (9:16)
-      const canvasWidth = isPost ? 1200 : 1080;
-      const canvasHeight = isPost ? 960 : 1920;
+      const canvasWidth = 1080;
+      const canvasHeight = isPost ? 1080 : 1920;
 
       const canvas = document.createElement('canvas');
       canvas.width = canvasWidth;
@@ -140,12 +140,10 @@ export default function SocialBadge() {
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      // 2. Define the active portrait content box:
-      // In POST: centered box with black pillarboxes on left and right
-      // In STORY: full width (no pillarboxes)
-      const contentWidth = isPost ? Math.round(canvasWidth * 0.77) : canvasWidth;
+      // 2. Define the active portrait content box (Full Width)
+      const contentWidth = canvasWidth;
       const contentHeight = canvasHeight;
-      const contentX = isPost ? Math.round((canvasWidth - contentWidth) / 2) : 0;
+      const contentX = 0;
       const contentY = 0;
 
       // 3. Draw portrait image inside content area
@@ -169,13 +167,14 @@ export default function SocialBadge() {
       ctx.rect(contentX, contentY, contentWidth, contentHeight);
       ctx.clip();
 
-      // Grayscale portrait filter matching the screenshots
-      ctx.filter = 'grayscale(100%) brightness(1.02) contrast(1.06)';
+      // Full color portrait
+      ctx.filter = 'brightness(1.02) contrast(1.04)';
+
+      const minScale = Math.max(contentWidth / img.width, contentHeight / img.height);
+      const scaledWidth = img.width * minScale * zoom;
+      const scaledHeight = img.height * minScale * zoom;
 
       const scaleFactor = contentWidth / 460;
-      const scaledWidth = img.width * zoom * (contentWidth / img.width);
-      const scaledHeight = img.height * (scaledWidth / img.width);
-
       const imgX = contentX + (contentWidth - scaledWidth) / 2 + pan.x * scaleFactor;
       const imgY = contentY + (contentHeight - scaledHeight) / 2 + pan.y * scaleFactor;
 
@@ -258,7 +257,7 @@ export default function SocialBadge() {
       ctx.fillText('STUDENT COMMUNITY DAY', contentX + contentWidth - 45, 73);
       ctx.font = '13px "JetBrains Mono", monospace';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.fillText('MYSURU 2026', contentX + contentWidth - 45, 93);
+      ctx.fillText('KOLHAPUR 2026', contentX + contentWidth - 45, 93);
       ctx.restore();
 
       // 6. Bottom wave text & Pill badge inside content area
@@ -291,16 +290,16 @@ export default function SocialBadge() {
       ctx.font = 'bold 36px "Inter", sans-serif';
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText("I'm Attending AWS", contentX + 45, contentBaseY + 65);
-      ctx.fillText('Student Community Day Mysuru', contentX + 45, contentBaseY + 110);
+      ctx.fillText('Student Community Day Kolhapur', contentX + 45, contentBaseY + 110);
 
       // Bottom Right: Location & Date
       ctx.textAlign = 'right';
       ctx.font = 'bold 15px "JetBrains Mono", monospace';
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText('📍 VVCE, MYSURU', contentX + contentWidth - 45, contentHeight - 75);
+      ctx.fillText('📍 GCOEK, KOLHAPUR', contentX + contentWidth - 45, contentHeight - 75);
       ctx.font = '14px "JetBrains Mono", monospace';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.fillText('📅 NOVEMBER 21, 2026', contentX + contentWidth - 45, contentHeight - 48);
+      ctx.fillText('📅 NOVEMBER 1, 2026', contentX + contentWidth - 45, contentHeight - 48);
 
       ctx.restore();
 
@@ -328,13 +327,13 @@ export default function SocialBadge() {
 
   // Social Share handler
   const handleShare = async () => {
-    const shareText = `I'm attending AWS Student Community Day Mysuru 2026 on Nov 21 at VVCE! Join 500+ builders, engineers & students. Claim your ticket & badge here!`;
+    const shareText = `I'm attending AWS Student Community Day Kolhapur 2026 on Nov 1 at GCOEK! Join 500+ builders, engineers & students. Claim your ticket & badge here!`;
     const shareUrl = window.location.href;
 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'AWS Student Community Day Mysuru 2026',
+          title: 'AWS Student Community Day Kolhapur 2026',
           text: shareText,
           url: shareUrl
         });
@@ -347,7 +346,7 @@ export default function SocialBadge() {
   };
 
   const copyToClipboard = () => {
-    const shareText = `I'm attending AWS Student Community Day Mysuru 2026 on Nov 21 at VVCE! Check out my badge: ${window.location.href}`;
+    const shareText = `I'm attending AWS Student Community Day Kolhapur 2026 on Nov 1 at GCOEK! Check out my badge: ${window.location.href}`;
     navigator.clipboard.writeText(shareText);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
@@ -364,7 +363,7 @@ export default function SocialBadge() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-[#23303E] leading-[1.12]">
             Show you're part of AWS
             <br className="hidden sm:inline" />
-            Student Community Day Mysuru.
+            Student Community Day Kolhapur.
           </h2>
           <p className="mt-4 text-sm sm:text-base text-[#01c1ac] font-medium max-w-2xl leading-relaxed">
             Generate personalized social cards to let your network know you're attending, speaking,
@@ -573,19 +572,16 @@ export default function SocialBadge() {
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
-                className={`relative overflow-hidden bg-black select-none shadow-2xl transition-all duration-300 cursor-grab active:cursor-grabbing border-2 border-black ${
+                className={`relative overflow-hidden bg-black select-none shadow-2xl transition-all duration-300 cursor-grab active:cursor-grabbing border-2 border-black mx-auto ${
                   activeTab === 'POST'
-                    ? 'w-full max-w-[560px] aspect-[4/3.2]'
+                    ? 'w-[440px] max-w-full aspect-[1/1]'
                     : 'w-[330px] max-w-full aspect-[9/16]'
                 }`}
                 title="Drag to reposition photo, use slider to zoom"
               >
-                {/* For POST: Side Pillarboxes (black background on left and right, center container for photo)
-                    For STORY: Edge to edge */}
+                {/* Full edge to edge for both POST and STORY */}
                 <div
-                  className={`relative h-full mx-auto overflow-hidden bg-black ${
-                    activeTab === 'POST' ? 'w-[78%]' : 'w-full'
-                  }`}
+                  className="relative h-full mx-auto overflow-hidden bg-black w-full"
                 >
                   {/* 1. Underlying Portrait Photo Layer (Black and white filter matching screenshot) */}
                   <div className="absolute inset-0 overflow-hidden bg-black">
@@ -593,9 +589,11 @@ export default function SocialBadge() {
                       src={imageSrc}
                       alt={fullName || 'Attendee Portrait'}
                       draggable={false}
-                      className="w-full h-full object-cover transition-transform duration-75 origin-center filter grayscale contrast-[1.08] brightness-[1.02]"
+                      className="w-full h-full transition-transform duration-75 filter brightness-[1.02] contrast-[1.04]"
                       style={{
-                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`
+                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                        objectFit: 'cover',
+                        objectPosition: 'center top'
                       }}
                     />
                     {/* Top dark gradient vignette matching screenshot */}
@@ -616,7 +614,7 @@ export default function SocialBadge() {
                         STUDENT COMMUNITY DAY
                       </p>
                       <p className="font-mono text-[8px] sm:text-[9px] text-white/90 tracking-widest mt-0.5 drop-shadow-sm">
-                        MYSURU 2026
+                        KOLHAPUR 2026
                       </p>
                     </div>
                   </div>
@@ -659,7 +657,7 @@ export default function SocialBadge() {
                           <h4 className="text-sm xs:text-base sm:text-xl font-bold tracking-tight leading-tight text-white drop-shadow-md">
                             I'm Attending AWS
                             <br />
-                            Student Community Day Mysuru
+                            Student Community Day Kolhapur
                           </h4>
                         </div>
 
@@ -667,11 +665,11 @@ export default function SocialBadge() {
                         <div className="self-end text-right font-mono text-[9px] sm:text-[10px] text-white space-y-0.5 drop-shadow-sm">
                           <p className="flex items-center justify-end gap-1">
                             <span className="text-pink-300">📍</span>
-                            <span className="font-bold">VVCE, MYSURU</span>
+                            <span className="font-bold">GCOEK, KOLHAPUR</span>
                           </p>
                           <p className="flex items-center justify-end gap-1 text-white/95">
                             <span className="text-blue-300">📅</span>
-                            <span>NOVEMBER 21, 2026</span>
+                            <span>NOVEMBER 1, 2026</span>
                           </p>
                         </div>
                       </div>
@@ -697,7 +695,7 @@ export default function SocialBadge() {
 
             <h3 className="text-lg font-bold text-[#23303E]">Share Your Badge</h3>
             <p className="text-xs text-[#64748b] mt-1">
-              Spread the word with your network on LinkedIn, X, or WhatsApp!
+              Download your badge and share it on LinkedIn or Instagram!
             </p>
 
             <div className="mt-5 space-y-3">
@@ -709,29 +707,16 @@ export default function SocialBadge() {
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-center gap-2 h-10 bg-[#0A66C2] hover:bg-[#084e96] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
               >
-                Share on LinkedIn
+                📤 Post on LinkedIn
               </a>
 
               <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                  `I'm attending AWS Student Community Day Mysuru 2026! Join me on Nov 21 at VVCE Mysuru! #AWSCommunityDay #AWSMysuru`
-                )}&url=${encodeURIComponent(window.location.href)}`}
+                href="https://www.instagram.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 h-10 bg-[#000000] hover:bg-[#222222] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                className="w-full flex items-center justify-center gap-2 h-10 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#bc1888] hover:opacity-90 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
               >
-                Post on X (Twitter)
-              </a>
-
-              <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                  `I'm attending AWS Student Community Day Mysuru 2026! Check out my badge & join here: ${window.location.href}`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 h-10 bg-[#25D366] hover:bg-[#1eb856] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
-              >
-                Send via WhatsApp
+                📸 Share on Instagram
               </a>
 
               <button

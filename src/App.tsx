@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SocialBadge from './components/SocialBadge';
+import LeadershipPreview from './components/LeadershipPreview';
+import { Link } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -55,8 +57,11 @@ export default function App() {
   // Preloader state
   const [showIntro, setShowIntro] = useState(true);
   const [introDismissed, setIntroDismissed] = useState(false);
+  const [showMarathiScreen, setShowMarathiScreen] = useState(false);
+  const [marathiScreenDismissed, setMarathiScreenDismissed] = useState(false);
   const [introProgress, setIntroProgress] = useState(0);
   const [typedTitle, setTypedTitle] = useState('');
+  const [typedMarathiTagline, setTypedMarathiTagline] = useState('');
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
 
   // Navigation & Interactive states
@@ -84,7 +89,7 @@ export default function App() {
     document.body.style.overflow = 'hidden';
 
     // Typewriter title
-    const fullTitle = 'Community Day Mysuru 2026';
+    const fullTitle = 'Community Day Kolhapur 2026';
     let currentIdx = 0;
     const typeTimer = setInterval(() => {
       if (currentIdx <= fullTitle.length) {
@@ -142,13 +147,50 @@ export default function App() {
 
   const handleDismissIntro = () => {
     setIntroDismissed(true);
-    document.body.style.overflow = '';
     setTimeout(() => {
       setShowIntro(false);
-    }, 600);
+      // Show Marathi screen immediately after first intro
+      setShowMarathiScreen(true);
+    }, 300); // Reduced from 600ms to 300ms for faster transition
   };
 
-  // 2. Rotating Taglines Effect
+  // 2. Marathi Screen Animation Effect
+  useEffect(() => {
+    if (!showMarathiScreen || marathiScreenDismissed) return;
+
+    document.body.style.overflow = 'hidden';
+
+    // Start immediately without delay
+    const marathiTagline = 'कोल्हापूर: ऐतिहासिक आणि आधुनिकतेचा सुवर्णसंगम!';
+    let marathiIdx = 0;
+    const marathiTimer = setInterval(() => {
+      if (marathiIdx <= marathiTagline.length) {
+        setTypedMarathiTagline(marathiTagline.slice(0, marathiIdx));
+        marathiIdx++;
+      } else {
+        clearInterval(marathiTimer);
+        // Auto dismiss after 1.5 seconds (reduced from 2)
+        setTimeout(() => {
+          handleDismissMarathiScreen();
+        }, 1500);
+      }
+    }, 70); // Slightly faster typing (70ms instead of 80ms)
+
+    return () => {
+      clearInterval(marathiTimer);
+      document.body.style.overflow = '';
+    };
+  }, [showMarathiScreen, marathiScreenDismissed]);
+
+  const handleDismissMarathiScreen = () => {
+    setMarathiScreenDismissed(true);
+    document.body.style.overflow = '';
+    setTimeout(() => {
+      setShowMarathiScreen(false);
+    }, 400); // Faster transition
+  };
+
+  // 3. Rotating Taglines Effect
   useEffect(() => {
     const interval = setInterval(() => {
       setTagIndex(prev => (prev + 1) % ROTATING_TAGS.length);
@@ -156,7 +198,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // 3. Stats Count-up Effect
+  // 4. Stats Count-up Effect
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -198,7 +240,7 @@ export default function App() {
     requestAnimationFrame(step);
   }
 
-  // 4. Scroll spy for navigation highlighting
+  // 5. Scroll spy for navigation highlighting
   useEffect(() => {
     const handleScroll = () => {
       const sections = ['top', 'about', 'speakers', 'tickets', 'sponsors', 'workshops', 'agenda', 'team', 'venue', 'faq', 'badge'];
@@ -235,7 +277,7 @@ export default function App() {
       role: 'Manager, Community Groups @Amazon',
       talk: 'Keynote: Empowering Global Builders & Community Growth',
       badge: 'AWS Keynote',
-      image: 'https://scd.awsmysuru.in/speakers/Jessica.jpg',
+      image: 'https://scd.awskolhapur.in/speakers/Jessica.jpg',
       linkedin: 'https://www.linkedin.com/in/jessicagilmore1/',
       isTba: false
     },
@@ -308,7 +350,7 @@ export default function App() {
                 <span className="w-2 h-2 rounded-full bg-[#01c1ac] animate-pulse" />
                 <span className="hidden xs:inline">AP-SOUTH-1</span>
                 <span className="text-[#23303E]/30 hidden xs:inline">•</span>
-                <span className="font-mono text-[10px] sm:text-xs text-[#23303E]">12.2958° N, 76.6394° E</span>
+                <span className="font-mono text-[10px] sm:text-xs text-[#23303E]">16.7050° N, 74.2433° E</span>
               </div>
               <button
                 onClick={handleDismissIntro}
@@ -329,7 +371,7 @@ export default function App() {
               <span className="font-light text-[#23303E] animate-cursor">|</span>
             </div>
             <p className="font-mono text-[11px] sm:text-xs md:text-sm text-[#64748b] mt-4 tracking-widest uppercase">
-              STUDENT COMMUNITY DAY &nbsp;//&nbsp; NOV 21, 2026 &nbsp;•&nbsp; VVCE MYSURU
+              STUDENT COMMUNITY DAY &nbsp;//&nbsp; NOV 1, 2026 &nbsp;•&nbsp; GCOEK KOLHAPUR
             </p>
             <div className="w-24 sm:w-32 h-1 bg-gradient-to-r from-[#FF9900] to-[#01c1ac] mt-6 rounded-full" />
           </div>
@@ -368,8 +410,62 @@ export default function App() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          MARATHI TAGLINE SCREEN
+      ───────────────────────────────────────────────────────────── */}
+      {showMarathiScreen && (
+        <div
+          id="marathi-screen"
+          className={`fixed inset-0 z-[9999] flex items-center justify-center transition-all duration-700 ease-out select-none ${
+            marathiScreenDismissed ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+          }`}
+        >
+          {/* Background Image - High Resolution, No Blur */}
+          <img
+            src="https://i.ibb.co/j9Dw5n1v/Golden-Hour-Palace-Reflection-1.png"
+            alt="Kolhapur Palace"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+            style={{ filter: 'none' }}
+          />
+          
+          {/* Light overlay for text readability only */}
+          <div className="absolute inset-0 bg-black/20" />
+
+          <div className="relative z-10 max-w-5xl mx-auto px-6 sm:px-10 text-center">
+            {/* Main Marathi Text */}
+            <div className="mb-8">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-extrabold text-white leading-tight tracking-tight drop-shadow-2xl [text-shadow:_0_4px_12px_rgb(0_0_0_/80%)]">
+                {typedMarathiTagline}
+                {typedMarathiTagline.length < 'कोल्हापूर: ऐतिहासिक आणि आधुनिकतेचा सुवर्णसंगम!'.length && (
+                  <span className="animate-pulse">|</span>
+                )}
+              </h2>
+            </div>
+
+            {/* English Translation */}
+            {typedMarathiTagline.length >= 'कोल्हापूर: ऐतिहासिक आणि आधुनिकतेचा सुवर्णसंगम!'.length && (
+              <div className="animate-in fade-in duration-500">
+                <p className="text-lg sm:text-xl md:text-2xl text-white font-medium tracking-wide drop-shadow-lg [text-shadow:_0_2px_8px_rgb(0_0_0_/60%)]">
+                  Kolhapur: A Golden Confluence of History and Modernity!
+                </p>
+              </div>
+            )}
+
+            {/* Skip button */}
+            <button
+              onClick={handleDismissMarathiScreen}
+              className="absolute top-8 right-8 text-sm font-mono uppercase bg-black/40 backdrop-blur-md text-white px-4 py-2 hover:bg-black/60 transition-colors border border-white/30"
+            >
+              Skip [Esc]
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
           STICKY HEADER / NAV
       ───────────────────────────────────────────────────────────── */}
+      {!showIntro && !showMarathiScreen && (
+        <>
       <header
         id="main-header"
         className="fixed top-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#23303E]/10 transition-shadow duration-300 shadow-sm"
@@ -383,7 +479,7 @@ export default function App() {
                 COMMUNITY DAY
               </span>
               <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-[#23303E]/70 mt-1 flex items-center gap-1">
-                MYSURU 2026 <span className="text-[#01c1ac] font-bold">·</span>{' '}
+                KOLHAPUR 2026 <span className="text-[#01c1ac] font-bold">·</span>{' '}
                 <span className="text-[#01c1ac] font-bold inline-block min-w-[50px] transition-all duration-300">
                   {ROTATING_TAGS[tagIndex]}
                 </span>
@@ -394,17 +490,30 @@ export default function App() {
           {/* Desktop Nav Links */}
           <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-6 xl:gap-8">
             {[
-              { href: '#about', label: 'About', id: 'about' },
-              { href: '#speakers', label: 'Speakers', id: 'speakers' },
-              { href: '#tickets', label: 'Tickets', id: 'tickets' },
-              { href: '#sponsors', label: 'Sponsors', id: 'sponsors' },
-              { href: '#workshops', label: 'Workshops', id: 'workshops' },
-              { href: '#agenda', label: 'Schedule', id: 'agenda' },
-              { href: '#team', label: 'Team', id: 'team' },
-              { href: '#faq', label: 'FAQ', id: 'faq' },
-              { href: '#badge', label: 'Badge', id: 'badge' }
+              { href: '#about', label: 'About', id: 'about', isRoute: false },
+              { href: '#speakers', label: 'Speakers', id: 'speakers', isRoute: false },
+              { href: '#tickets', label: 'Tickets', id: 'tickets', isRoute: false },
+              { href: '#sponsors', label: 'Sponsors', id: 'sponsors', isRoute: false },
+              { href: '#workshops', label: 'Workshops', id: 'workshops', isRoute: false },
+              { href: '#agenda', label: 'Schedule', id: 'agenda', isRoute: false },
+              { href: '/team', label: 'Team', id: 'team', isRoute: true },
+              { href: '#faq', label: 'FAQ', id: 'faq', isRoute: false },
+              { href: '#badge', label: 'Badge', id: 'badge', isRoute: false }
             ].map(link => {
               const isActive = activeSection === link.id;
+              
+              if (link.isRoute) {
+                return (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className="text-[13.5px] font-medium transition-colors relative py-1 text-[#23303E] hover:text-[#01c1ac]"
+                  >
+                    {link.label}
+                  </Link>
+                );
+              }
+              
               return (
                 <a
                   key={link.href}
@@ -450,25 +559,40 @@ export default function App() {
         {mobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-[#23303E]/10 px-4 py-4 space-y-1 shadow-xl animate-in slide-in-from-top-2 duration-200">
             {[
-              { href: '#about', label: 'About' },
-              { href: '#speakers', label: 'Speakers' },
-              { href: '#tickets', label: 'Tickets' },
-              { href: '#sponsors', label: 'Sponsors' },
-              { href: '#workshops', label: 'Workshops' },
-              { href: '#agenda', label: 'Schedule' },
-              { href: '#team', label: 'Team' },
-              { href: '#faq', label: 'FAQ' },
-              { href: '#badge', label: 'Badge' }
-            ].map(link => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2.5 text-sm font-medium text-[#23303E] hover:bg-[#EFF0F3] hover:text-[#01c1ac] rounded-md transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
+              { href: '#about', label: 'About', isRoute: false },
+              { href: '#speakers', label: 'Speakers', isRoute: false },
+              { href: '#tickets', label: 'Tickets', isRoute: false },
+              { href: '#sponsors', label: 'Sponsors', isRoute: false },
+              { href: '#workshops', label: 'Workshops', isRoute: false },
+              { href: '#agenda', label: 'Schedule', isRoute: false },
+              { href: '/team', label: 'Team', isRoute: true },
+              { href: '#faq', label: 'FAQ', isRoute: false },
+              { href: '#badge', label: 'Badge', isRoute: false }
+            ].map(link => {
+              if (link.isRoute) {
+                return (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-medium text-[#23303E] hover:bg-[#EFF0F3] hover:text-[#01c1ac] rounded-md transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                );
+              }
+              
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2.5 text-sm font-medium text-[#23303E] hover:bg-[#EFF0F3] hover:text-[#01c1ac] rounded-md transition-colors"
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </div>
         )}
       </header>
@@ -543,12 +667,12 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-mono text-xs sm:text-sm text-white/95 tracking-wider uppercase font-semibold">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-[#01c1ac]" />
-                <span>MYSURU, INDIA</span>
+                <span>KOLHAPUR, INDIA</span>
               </div>
               <span className="hidden sm:inline text-white/40">•</span>
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#01c1ac]" />
-                <span>NOVEMBER 21, 2026</span>
+                <span>NOVEMBER 1, 2026</span>
               </div>
             </div>
 
@@ -628,7 +752,7 @@ export default function App() {
                   Community Conversations
                 </h3>
                 <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
-                  Meet the local cloud community — engineers, founders, students, and hiring teams across Mysuru and
+                  Meet the local cloud community — engineers, founders, students, and hiring teams across Kolhapur and
                   beyond.
                 </p>
               </div>
@@ -701,7 +825,7 @@ export default function App() {
               <div className="flex items-center justify-between w-full">
                 <Terminal className="w-11 h-11 text-[#01c1ac] stroke-[1.5]" />
                 <span className="font-mono text-[11px] text-white/40 tracking-wider uppercase">
-                  mysuru builder
+                  kolhapur builder
                 </span>
               </div>
               <div className="font-mono text-sm leading-relaxed space-y-1">
@@ -891,7 +1015,7 @@ export default function App() {
               Tickets for every builder
             </h2>
             <p className="mt-3 text-base sm:text-lg md:text-xl text-[#23303E]/90 font-light">
-              Join AWS Student Community Day Mysuru 2026 with access to talks, workshops, and community experiences.
+              Join AWS Student Community Day Kolhapur 2026 with access to talks, workshops, and community experiences.
             </p>
           </div>
 
@@ -915,7 +1039,7 @@ export default function App() {
 
                 <ul className="mt-6 space-y-3 font-normal text-xs text-white/85 leading-relaxed">
                   {[
-                    'Full access to the entire AWS Student Community Day Mysuru 2026 on 21st November 2026',
+                    'Full access to the entire AWS Student Community Day Kolhapur 2026 on 1st November 2026',
                     'Exclusive event Swags & Goodies',
                     'Morning Snacks',
                     'Lunch',
@@ -966,7 +1090,7 @@ export default function App() {
 
                 <ul className="mt-6 space-y-3 font-normal text-xs text-white/85 leading-relaxed">
                   {[
-                    'Full access to the entire AWS Student Community Day Mysuru 2026 on 21st November 2026',
+                    'Full access to the entire AWS Student Community Day Kolhapur 2026 on 1st November 2026',
                     'Exclusive event Swags & Goodies',
                     'Morning Snacks',
                     'Lunch',
@@ -985,7 +1109,7 @@ export default function App() {
 
               <div className="mt-8 pt-4 border-t border-white/10">
                 <a
-                  href="https://konfhub.com/scd-mysuru-2026"
+                  href="https://konfhub.com/scd-kolhapur-2026"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full h-11 bg-[#CDE3CB] hover:bg-[#D1E5CD] text-[#23303E] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-colors shadow-md"
@@ -1014,7 +1138,7 @@ export default function App() {
 
                 <ul className="mt-6 space-y-3 font-normal text-xs text-white/85 leading-relaxed">
                   {[
-                    'Full access to the entire AWS Student Community Day Mysuru 2026 on 21st November 2026',
+                    'Full access to the entire AWS Student Community Day Kolhapur 2026 on 1st November 2026',
                     'Exclusive event Swags & Goodies',
                     'Morning Snacks',
                     'Lunch',
@@ -1101,8 +1225,8 @@ export default function App() {
               <div className="flex items-center gap-4">
                 <GraduationCap className="w-12 h-12 text-[#23303E]" />
                 <div className="text-left">
-                  <p className="font-bold text-xl sm:text-2xl text-[#23303E] tracking-tight">VVCE</p>
-                  <p className="text-xs text-[#64748b]">Vidyavardhaka College of Engineering, Mysuru</p>
+                  <p className="font-bold text-xl sm:text-2xl text-[#23303E] tracking-tight">GCOEK</p>
+                  <p className="text-xs text-[#64748b]">Government College of Engineering, Kolhapur</p>
                 </div>
               </div>
             </div>
@@ -1328,85 +1452,17 @@ export default function App() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          TEAM SECTION
+          TEAM SECTION (LEADERSHIP PREVIEW)
       ───────────────────────────────────────────────────────────── */}
-      <section id="team" className="py-20 sm:py-24 bg-[#23303E] text-white relative overflow-hidden">
-        {/* Subtle patterned overlay */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(0deg, transparent, transparent 40px, white 40px, white 41px), repeating-linear-gradient(90deg, transparent, transparent 40px, white 40px, white 41px)'
-          }}
-        />
-
-        <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 mb-12 sm:mb-14">
-            <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-white leading-tight">
-                Meet the Team
-                <br />
-                Behind the Experience
-              </h2>
-              <p className="mt-3 text-sm sm:text-base text-white/65 max-w-lg leading-relaxed">
-                Behind every keynote, workshop, and community moment is a team committed to creating an
-                unforgettable experience for every attendee.
-              </p>
-            </div>
-            <a
-              href="#team"
-              className="inline-flex items-center gap-2 h-11 px-6 border border-white/40 hover:bg-white/10 text-white font-mono text-xs font-semibold uppercase tracking-wider transition-colors self-start sm:self-auto"
-            >
-              <span>VIEW ALL</span>
-              <ArrowUpRight className="w-4 h-4" />
-            </a>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 sm:gap-5">
-            {[
-              { name: 'Yashwanth R', img: 'https://scd.awsmysuru.in/team/yashwanth.jpg', init: 'YR' },
-              { name: 'Vibha S', img: 'https://scd.awsmysuru.in/team/vibha.jpg', init: 'VS' },
-              { name: 'Gagan K M', img: 'https://scd.awsmysuru.in/team/gagan.jpg', init: 'GK' },
-              { name: 'K Reethu', img: 'https://scd.awsmysuru.in/team/reethu.jpg', init: 'KR' },
-              { name: 'Yashas MV', img: 'https://scd.awsmysuru.in/team/yashas_mv.jpg', init: 'YM' },
-              { name: 'Falkia', img: 'https://scd.awsmysuru.in/team/falkia.jpg', init: 'FA' }
-            ].map((member, i) => (
-              <div
-                key={i}
-                className="bg-[#2D3C4E] border border-[#2D3C4E] overflow-hidden group hover:-translate-y-1 transition-transform"
-              >
-                <div className="p-3 flex items-center justify-between border-b border-[#23303E]/50">
-                  <h3 className="font-medium text-xs sm:text-sm text-white truncate">{member.name}</h3>
-                  <span className="text-[10px] text-white/40 font-mono">⬜</span>
-                </div>
-                <div className="aspect-[3/4] relative bg-[#1a232f] flex items-center justify-center overflow-hidden">
-                  <img
-                    src={member.img}
-                    alt={member.name}
-                    className="w-full h-full object-cover object-top filter grayscale-[15%] transition-transform duration-300 group-hover:scale-105"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                  {/* Fallback avatar if remote image fails */}
-                  <span className="font-mono text-lg font-bold text-white/20 select-none">
-                    {member.init}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <LeadershipPreview />
 
       {/* ─────────────────────────────────────────────────────────────
           VENUE SECTION
       ───────────────────────────────────────────────────────────── */}
       <section id="venue" className="relative min-h-[480px] bg-[#23303E] flex items-center overflow-hidden text-white">
         <img
-          src="https://scd.awsmysuru.in/venue.jpg"
-          alt="Vidyavardhaka College of Engineering"
+          src="https://scd.awskolhapur.in/venue.jpg"
+          alt="Government College of Engineering, Kolhapur"
           className="absolute inset-0 w-full h-full object-cover filter grayscale-[70%] brightness-[0.4]"
           onError={(e) => {
             (e.target as HTMLElement).style.display = 'none';
@@ -1425,7 +1481,7 @@ export default function App() {
               of Engineering
             </h2>
             <p className="mt-4 text-sm sm:text-base text-white/85 leading-relaxed">
-              Kannada Sahithya Parishath Road, III Stage, Gokulam, Mysuru - 570002.
+              Shahu Nagar, Kolhapur - 416 003, Maharashtra, India.
             </p>
             <p className="mt-2 text-xs sm:text-sm text-[#01c1ac] leading-relaxed">
               Providing the premier setting for a full day of cloud learning, workshops, and community networking.
@@ -1433,7 +1489,7 @@ export default function App() {
 
             <div className="mt-8 flex flex-wrap gap-4">
               <a
-                href="https://maps.google.com/?q=Vidyavardhaka+College+of+Engineering+Mysuru"
+                href="https://maps.google.com/?q=Government+College+of+Engineering+Kolhapur"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 h-10 px-5 border border-white/50 hover:bg-white/10 text-white font-mono text-xs font-semibold uppercase tracking-wider transition-colors"
@@ -1508,7 +1564,7 @@ export default function App() {
               <AwsLogo className="h-8 w-auto" dark />
               <div className="flex flex-col">
                 <span className="font-bold text-sm tracking-tight text-white leading-tight">COMMUNITY DAY</span>
-                <span className="font-mono text-[10px] text-white/50 tracking-wider">MYSURU 2026</span>
+                <span className="font-mono text-[10px] text-white/50 tracking-wider">KOLHAPUR 2026</span>
               </div>
             </a>
             <p className="mt-4 text-xs sm:text-sm text-white/50 leading-relaxed">
@@ -1525,7 +1581,7 @@ export default function App() {
               <a href="#tickets" className="text-white/60 hover:text-[#01c1ac] transition-colors">Tickets</a>
               <a href="#sponsors" className="text-white/60 hover:text-[#01c1ac] transition-colors">Sponsors</a>
               <a href="#agenda" className="text-white/60 hover:text-[#01c1ac] transition-colors">Schedule</a>
-              <a href="#team" className="text-white/60 hover:text-[#01c1ac] transition-colors">Team</a>
+              <Link to="/team" className="text-white/60 hover:text-[#01c1ac] transition-colors">Team</Link>
               <a href="#venue" className="text-white/60 hover:text-[#01c1ac] transition-colors">Venue</a>
               <a href="#faq" className="text-white/60 hover:text-[#01c1ac] transition-colors">FAQ</a>
               <a href="#badge" className="text-white/60 hover:text-[#01c1ac] transition-colors">Badge</a>
@@ -1555,6 +1611,8 @@ export default function App() {
           </p>
         </div>
       </footer>
+        </>
+      )}
     </div>
   );
 }
