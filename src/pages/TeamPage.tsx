@@ -24,17 +24,17 @@ function AwsLogo({ className = "h-8 w-auto" }: { className?: string }) {
 
 export default function TeamPage() {
   return (
-    <div className="min-h-screen bg-[#EFF0F3]">
+    <div className="min-h-screen bg-[#F2E9E4]">
       {/* Simple Header for Team Page */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#23303E]/10 shadow-sm">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-[#22223B]/10 shadow-sm">
         <div className="max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10 h-16 sm:h-[72px] flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group">
             <AwsLogo className="h-7 sm:h-9 w-auto" />
             <div className="flex flex-col">
-              <span className="font-extrabold text-sm sm:text-[15px] tracking-tight text-[#23303E] leading-none">
+              <span className="font-extrabold text-sm sm:text-[15px] tracking-tight text-[#22223B] leading-none">
                 COMMUNITY DAY
               </span>
-              <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-[#23303E]/70 mt-1">
+              <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-[#22223B]/70 mt-1">
                 KOLHAPUR 2026
               </span>
             </div>
@@ -42,7 +42,7 @@ export default function TeamPage() {
           
           <Link
             to="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-[#23303E] hover:text-[#01c1ac] transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#22223B] hover:text-[#C9ADA7] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Home
@@ -54,7 +54,7 @@ export default function TeamPage() {
       <TeamSection />
 
       {/* Simple Footer */}
-      <footer className="bg-[#23303E] text-white py-8">
+      <footer className="bg-[#22223B] text-white py-8">
         <div className="max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10 text-center">
           <p className="text-sm text-white/60">
             © 2026 AWS Community Day Kolhapur. Organized by AWS Student Builder Group.

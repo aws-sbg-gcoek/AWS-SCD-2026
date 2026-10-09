@@ -32,8 +32,8 @@ function AwsLogoBadge({ className = "h-7 w-auto" }: { className?: string }) {
   );
 }
 
-// Exact Black & White Template Portrait matching user's screenshots
-const TEMPLATE_PORTRAIT = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85';
+// Exact Colored Template Portrait
+const TEMPLATE_PORTRAIT = 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=900&q=85';
 
 export default function SocialBadge() {
   // Tab format: 'POST' (with black side pillarboxes) or 'STORY' (vertical 9:16)
@@ -170,7 +170,7 @@ export default function SocialBadge() {
       // Full color portrait
       ctx.filter = 'brightness(1.02) contrast(1.04)';
 
-      const minScale = Math.max(contentWidth / img.width, contentHeight / img.height);
+      const minScale = Math.min(contentWidth / img.width, contentHeight / img.height);
       const scaledWidth = img.width * minScale * zoom;
       const scaledHeight = img.height * minScale * zoom;
 
@@ -353,19 +353,19 @@ export default function SocialBadge() {
   };
 
   return (
-    <section id="badge" className="py-16 sm:py-24 bg-[#EFF0F3] text-[#23303E]">
+    <section id="badge" className="py-16 sm:py-24 bg-[#F2E9E4] text-[#22223B]">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         {/* Section Header Matching Screenshot */}
         <div className="mb-10 sm:mb-12">
-          <p className="font-mono text-xs sm:text-[13px] uppercase tracking-widest text-[#01c1ac] font-bold mb-3">
+          <p className="font-mono text-xs sm:text-[13px] uppercase tracking-widest text-[#4A4E69] font-bold mb-3">
             SOCIAL BADGE
           </p>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-[#23303E] leading-[1.12]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-[#22223B] leading-[1.12]">
             Show you're part of AWS
             <br className="hidden sm:inline" />
             Student Community Day Kolhapur.
           </h2>
-          <p className="mt-4 text-sm sm:text-base text-[#01c1ac] font-medium max-w-2xl leading-relaxed">
+          <p className="mt-4 text-sm sm:text-base text-[#4A4E69] font-medium max-w-2xl leading-relaxed">
             Generate personalized social cards to let your network know you're attending, speaking,
             volunteering or supporting the community.
           </p>
@@ -381,7 +381,7 @@ export default function SocialBadge() {
               {/* Row 1: Full Name & Email Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#23303E] uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-2">
                     Full Name<span className="text-red-500">*</span>
                   </label>
                   <input
@@ -389,12 +389,12 @@ export default function SocialBadge() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="RENATE REINSVE"
-                    className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-gray-200 text-[#23303E] text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-[#01c1ac] focus:bg-white uppercase transition-colors"
+                    className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-gray-200 text-[#22223B] text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-[#4A4E69] focus:bg-white uppercase transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#23303E] uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-2">
                     Email Address<span className="text-red-500">*</span>
                   </label>
                   <input
@@ -402,14 +402,14 @@ export default function SocialBadge() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="RENATEREINSVE@GMAIL.COM"
-                    className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-gray-200 text-[#23303E] text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-[#01c1ac] focus:bg-white uppercase transition-colors"
+                    className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-gray-200 text-[#22223B] text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-[#4A4E69] focus:bg-white uppercase transition-colors"
                   />
                 </div>
               </div>
 
               {/* Row 2: Role selector */}
               <div>
-                <label className="block text-xs font-bold text-[#23303E] uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-2">
                   Badge Role
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -420,7 +420,7 @@ export default function SocialBadge() {
                       onClick={() => setRole(r)}
                       className={`h-9 font-mono text-[11px] font-semibold tracking-wider uppercase border transition-all ${
                         role === r
-                          ? 'bg-[#23303E] text-white border-[#23303E]'
+                          ? 'bg-[#22223B] text-white border-[#22223B]'
                           : 'bg-[#F8FAFC] text-[#64748b] border-gray-200 hover:border-gray-400'
                       }`}
                     >
@@ -432,10 +432,10 @@ export default function SocialBadge() {
 
               {/* Row 3: Upload Photo */}
               <div>
-                <label className="block text-xs font-bold text-[#23303E] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-1">
                   Upload Photo<span className="text-red-500">*</span>
                 </label>
-                <p className="text-[11.5px] text-[#01c1ac] font-medium mb-3">
+                <p className="text-[11.5px] text-[#4A4E69] font-medium mb-3">
                   Upload a clear headshot or portrait photo with a solid background.
                 </p>
 
@@ -459,7 +459,7 @@ export default function SocialBadge() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#23303E] font-mono text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#22223B] font-mono text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     <span>UPLOAD PHOTO</span>
                     <Upload className="w-3.5 h-3.5" />
@@ -469,10 +469,10 @@ export default function SocialBadge() {
 
               {/* Row 4: Zoom / Adjust Image */}
               <div>
-                <label className="block text-xs font-bold text-[#23303E] uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-1">
                   Zoom/Adjust Image
                 </label>
-                <p className="text-[11.5px] text-[#01c1ac] font-medium mb-3">
+                <p className="text-[11.5px] text-[#4A4E69] font-medium mb-3">
                   Your photo keeps its original proportions. Drag to reposition it or use the slider to zoom in.
                 </p>
 
@@ -485,14 +485,14 @@ export default function SocialBadge() {
                     step="0.05"
                     value={zoom}
                     onChange={(e) => setZoom(parseFloat(e.target.value))}
-                    className="w-full accent-[#23303E] cursor-pointer"
+                    className="w-full accent-[#22223B] cursor-pointer"
                   />
                   <ZoomIn className="w-4 h-4 text-[#64748b] flex-shrink-0" />
 
                   <button
                     type="button"
                     onClick={handleFitToFrame}
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#23303E] font-mono text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer ml-1"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#22223B] font-mono text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer ml-1"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>FIT TO FRAME</span>
@@ -508,8 +508,8 @@ export default function SocialBadge() {
                   disabled={isDownloading}
                   className={`h-11 flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                     isFormComplete
-                      ? 'bg-[#EFF0F3] hover:bg-[#23303E] hover:text-white text-[#23303E] border border-gray-300'
-                      : 'bg-[#EFF0F3] text-gray-400 border border-gray-200'
+                      ? 'bg-[#F2E9E4] hover:bg-[#22223B] hover:text-white text-[#22223B] border border-[#22223B]/30'
+                      : 'bg-[#F2E9E4] text-gray-400 border border-gray-200'
                   }`}
                 >
                   <span>{isDownloading ? 'GENERATING...' : 'DOWNLOAD IMAGE'}</span>
@@ -519,7 +519,7 @@ export default function SocialBadge() {
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="h-11 flex items-center justify-center gap-2 bg-[#708090] hover:bg-[#5a6875] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
+                  className="h-11 flex items-center justify-center gap-2 bg-[#4A4E69] hover:bg-[#393c52] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
                 >
                   <span>SHARE ON SOCIAL</span>
                   <Share2 className="w-4 h-4" />
@@ -527,7 +527,7 @@ export default function SocialBadge() {
               </div>
 
               {/* Helper text matching screenshot */}
-              <p className="text-[11.5px] text-[#01c1ac] font-medium leading-relaxed">
+              <p className="text-[11.5px] text-[#4A4E69] font-medium leading-relaxed">
                 Complete your name, email, and photo to enable the download. Upload a photo to replace the template portrait.
               </p>
             </div>
@@ -592,8 +592,8 @@ export default function SocialBadge() {
                       className="w-full h-full transition-transform duration-75 filter brightness-[1.02] contrast-[1.04]"
                       style={{
                         transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                        objectFit: 'cover',
-                        objectPosition: 'center top'
+                        objectFit: 'contain',
+                        objectPosition: 'center center'
                       }}
                     />
                     {/* Top dark gradient vignette matching screenshot */}
@@ -693,36 +693,40 @@ export default function SocialBadge() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-lg font-bold text-[#23303E]">Share Your Badge</h3>
+            <h3 className="text-lg font-bold text-[#22223B]">Share Your Badge</h3>
             <p className="text-xs text-[#64748b] mt-1">
               Download your badge and share it on LinkedIn or Instagram!
             </p>
 
             <div className="mt-5 space-y-3">
-              <a
-                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
-                  window.location.href
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 h-10 bg-[#0A66C2] hover:bg-[#084e96] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
-              >
-                📤 Post on LinkedIn
-              </a>
+              {activeTab === 'POST' && (
+                <a
+                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
+                    window.location.href
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 h-10 bg-[#0A66C2] hover:bg-[#084e96] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  📤 Post on LinkedIn
+                </a>
+              )}
 
-              <a
-                href="https://www.instagram.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 h-10 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#bc1888] hover:opacity-90 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
-              >
-                📸 Share on Instagram
-              </a>
+              {activeTab === 'STORY' && (
+                <a
+                  href="https://www.instagram.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 h-10 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#bc1888] hover:opacity-90 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                >
+                  📸 Share on Instagram
+                </a>
+              )}
 
               <button
                 type="button"
                 onClick={copyToClipboard}
-                className="w-full flex items-center justify-center gap-2 h-10 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#23303E] font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border border-gray-300"
+                className="w-full flex items-center justify-center gap-2 h-10 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#22223B] font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer border border-gray-300"
               >
                 {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                 <span>{copiedLink ? 'COPIED TO CLIPBOARD!' : 'COPY SHARE LINK'}</span>

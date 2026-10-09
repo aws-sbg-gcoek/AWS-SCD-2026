@@ -2,57 +2,77 @@
 
 @layer base {
   :root {
-    --dark: #23303E;
-    --dark2: #2D3C4E;
-    --dark3: #1a232f;
-    --teal: #01c1ac;
-    --mint: #D1E5CD;
-    --mint2: #CDE3CB;
-    --bg-sage: #D1E5CD;
-    --bg-light: #EFF0F3;
-    --white: #FAFAFA;
-    --green-hl: #a2e048;
-    --blue-hl: #38bdf8;
+    /* ── New Premium Palette ── */
+    --navy:       #22223B;
+    --navy-soft:  #4A4E69;
+    --mauve:      #9A8C98;
+    --rose:       #C9ADA7;
+    --bg:         #F2E9E4;
+    --white:      #FFFFFF;
+
+    /* Legacy aliases (kept for any missed refs) */
+    --dark:       #22223B;
+    --dark2:      #4A4E69;
+    --teal:       #C9ADA7;
   }
 
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #EFF0F3;
-    color: #23303E;
+    background-color: #F2E9E4;
+    color: #22223B;
     overflow-x: hidden;
   }
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
-/* Custom scrollbar hiding */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+/* ── Custom scrollbar hiding ── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Intro terminal blinking cursor */
+/* ── Cursor blink ── */
 @keyframes cursorBlink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  50%       { opacity: 0; }
 }
+.animate-cursor { animation: cursorBlink 0.9s step-start infinite; }
 
-.animate-cursor {
-  animation: cursorBlink 0.9s step-start infinite;
-}
-
-/* Smooth pulse for TBA items */
+/* ── Shimmer pulse for TBA items ── */
 @keyframes shimmerPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.7; }
+}
+.animate-shimmer { animation: shimmerPulse 2s ease-in-out infinite; }
+
+/* ── Subtle fade-in utility ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeSlideUp 0.5s ease forwards; }
+
+/* ── 3D Card Animation ── */
+.card-3d, .team-card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), 
+              opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, opacity;
 }
 
-.animate-shimmer {
-  animation: shimmerPulse 2s ease-in-out infinite;
+.card-3d:hover, .team-card-3d:hover {
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4) !important;
 }
 
+/* Ensure smooth scrolling performance */
+.no-scrollbar {
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
