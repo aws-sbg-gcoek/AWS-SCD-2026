@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SocialBadge from './components/SocialBadge';
 import LeadershipPreview from './components/LeadershipPreview';
+import {
+  fetchTicketAvailability,
+  formatTicketDate,
+  formatTicketPrice,
+  TicketAvailability,
+  TicketCheckoutButton,
+  TicketCheckoutDialog,
+  TicketType,
+} from './components/TicketCheckout';
 import { Link } from 'react-router-dom';
 import {
   Calendar,
@@ -81,6 +90,32 @@ export default function App() {
   const carouselRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [tickets, setTickets] = useState<TicketAvailability[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [ticketsError, setTicketsError] = useState('');
+  const [checkoutTicket, setCheckoutTicket] = useState<TicketAvailability | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchTicketAvailability(controller.signal)
+      .then(setTickets)
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        console.error('Could not load ticket availability:', error);
+        setTicketsError(error instanceof Error ? error.message : 'Could not load ticket availability.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTicketsLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  const earlyBirdTicket = tickets.find(ticket => ticket.code === 'early_bird');
+  const regularTicket = tickets.find(ticket => ticket.code === 'regular');
+  const openTicketCheckout = (ticketType: TicketType) => {
+    const ticket = tickets.find(item => item.code === ticketType);
+    if (ticket?.available) setCheckoutTicket(ticket);
+  };
 
   // 1. Preloader Effect
   useEffect(() => {
@@ -1182,6 +1217,13 @@ export default function App() {
             </p>
           </div>
 
+          {ticketsLoading && <p role="status" className="mt-6 text-sm text-[#64748b]">Checking ticket prices and availability…</p>}
+          {ticketsError && (
+            <p role="alert" className="mt-6 border border-red-700/20 bg-white px-4 py-3 text-sm text-red-800">
+              Ticket sales are temporarily unavailable: {ticketsError}
+            </p>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-10 sm:mt-12">
             {/* Super Early Bird */}
             <div className="bg-[#22223B] text-white p-6 sm:p-8 flex flex-col justify-between rounded-none shadow-lg border border-[#22223B] transition-transform hover:-translate-y-1">
@@ -1245,9 +1287,13 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-normal text-white">₹249</span>
+                  <span className="text-4xl sm:text-5xl font-normal text-white">{formatTicketPrice(earlyBirdTicket)}</span>
                   <p className="font-mono text-[11px] text-white/60 mt-2 leading-relaxed">
-                    Starts On: 26th Sep 2026, 04:58 PM (GMT+05:30)
+                    {earlyBirdTicket?.endsAt
+                      ? `Available until: ${formatTicketDate(earlyBirdTicket.endsAt)} IST`
+                      : earlyBirdTicket?.available
+                        ? 'On sale now'
+                        : 'Sale dates and availability are managed by the event team'}
                   </p>
                 </div>
 
@@ -1271,14 +1317,11 @@ export default function App() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-white/10">
-                <a
-                  href="https://konfhub.com/scd-kolhapur-2026"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full h-11 bg-[#CDE3CB] hover:bg-[#D1E5CD] text-[#22223B] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-colors shadow-md"
-                >
-                  GRAB YOUR TICKET
-                </a>
+                <TicketCheckoutButton
+                  ticket={earlyBirdTicket}
+                  loading={ticketsLoading}
+                  onClick={() => openTicketCheckout('early_bird')}
+                />
               </div>
             </div>
 
@@ -1293,9 +1336,11 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-normal text-white">₹349</span>
+                  <span className="text-4xl sm:text-5xl font-normal text-white">{formatTicketPrice(regularTicket)}</span>
                   <p className="font-mono text-[11px] text-white/60 mt-2 leading-relaxed">
-                    Starts On: 22nd Oct 2026, 05:54 PM (GMT+05:30)
+                    {regularTicket?.startsAt
+                      ? `Available from: ${formatTicketDate(regularTicket.startsAt)} IST`
+                      : 'Sale dates and availability are managed by the event team'}
                   </p>
                 </div>
 
@@ -1319,15 +1364,21 @@ export default function App() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-white/10">
-                <button
-                  disabled
-                  className="w-full h-11 bg-[#7B9285] text-[#22223B] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed opacity-90"
-                >
-                  COMING SOON
-                </button>
+                <TicketCheckoutButton
+                  ticket={regularTicket}
+                  loading={ticketsLoading}
+                  onClick={() => openTicketCheckout('regular')}
+                />
               </div>
             </div>
           </div>
+          {checkoutTicket && (
+            <TicketCheckoutDialog
+              key={checkoutTicket.code}
+              ticket={checkoutTicket}
+              onClose={() => setCheckoutTicket(null)}
+            />
+          )}
         </div>
       </section>
 
