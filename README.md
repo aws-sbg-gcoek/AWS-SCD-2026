@@ -2,19 +2,30 @@
 <img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
 </div>
 
-# Run and deploy your AI Studio app
+# AWS Student Community Day website
 
-This contains everything you need to run your app locally.
+The website is a React/Vite frontend. Its ticket prices, availability, and Razorpay checkout are provided by the Express API in [`server/`](./server/README.md).
 
-View your app in AI Studio: https://ai.studio/apps/861278f4-5fae-4529-8022-7baed6d693f0
+## Run locally
 
-## Run Locally
+Requirements: Node.js 20 or newer and PostgreSQL 14 or newer.
 
-**Prerequisites:**  Node.js
+1. Configure the backend by following the [backend setup guide](./server/README.md). Create `server/.env` from `server/.env.example`, configure PostgreSQL and Razorpay **Test Mode** credentials, and set the approved ticket capacities.
+2. In one terminal, start the API:
 
+   ```powershell
+   cd server
+   npm install
+   npm run dev
+   ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+3. In a second terminal from the project root, start the website:
+
+   ```powershell
+   npm install
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000). Vite proxies `/api` requests to the backend at `http://localhost:4000`.
+
+Ticket availability stays disabled until the backend has a working database and non-zero approved capacity configured. Keep Razorpay secret and webhook keys in the backend environment only.
