@@ -24,7 +24,7 @@ export interface TicketSystemConfig {
 }
 
 export const ADMIN_AUTH_KEY = 'aws_ticket_admin_auth';
-export const ADMIN_PASSWORD = 'AWS-Ticket-Admin-2026!';
+export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'AWS-Ticket-Admin-2026!';
 export const CONFIG_STORAGE_KEY = 'aws_ticket_tiers_config';
 
 export const DEFAULT_TICKETS_CONFIG: TicketSystemConfig = {
