@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import SocialBadge from './components/SocialBadge';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import LeadershipPreview from './components/LeadershipPreview';
 import { Link } from 'react-router-dom';
 import {
@@ -57,11 +56,8 @@ export default function App() {
   // Preloader state
   const [showIntro, setShowIntro] = useState(true);
   const [introDismissed, setIntroDismissed] = useState(false);
-  const [showMarathiScreen, setShowMarathiScreen] = useState(false);
-  const [marathiScreenDismissed, setMarathiScreenDismissed] = useState(false);
   const [introProgress, setIntroProgress] = useState(0);
   const [typedTitle, setTypedTitle] = useState('');
-  const [typedMarathiTagline, setTypedMarathiTagline] = useState('');
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
 
   // Navigation & Interactive states
@@ -148,47 +144,10 @@ export default function App() {
 
   const handleDismissIntro = () => {
     setIntroDismissed(true);
-    setTimeout(() => {
-      setShowIntro(false);
-      // Show Marathi screen immediately after first intro
-      setShowMarathiScreen(true);
-    }, 200); // Reduced to 200ms for faster transition
-  };
-
-  // 2. Marathi Screen Animation Effect
-  useEffect(() => {
-    if (!showMarathiScreen || marathiScreenDismissed) return;
-
-    document.body.style.overflow = 'hidden';
-
-    // Start immediately without delay
-    const marathiTagline = 'कोल्हापूर: ऐतिहासिक आणि आधुनिकतेचा सुवर्णसंगम!';
-    let marathiIdx = 0;
-    const marathiTimer = setInterval(() => {
-      if (marathiIdx <= marathiTagline.length) {
-        setTypedMarathiTagline(marathiTagline.slice(0, marathiIdx));
-        marathiIdx++;
-      } else {
-        clearInterval(marathiTimer);
-        // Auto dismiss after 1 second (reduced from 1.5)
-        setTimeout(() => {
-          handleDismissMarathiScreen();
-        }, 1000);
-      }
-    }, 50); // Faster typing (50ms instead of 70ms)
-
-    return () => {
-      clearInterval(marathiTimer);
-      document.body.style.overflow = '';
-    };
-  }, [showMarathiScreen, marathiScreenDismissed]);
-
-  const handleDismissMarathiScreen = () => {
-    setMarathiScreenDismissed(true);
     document.body.style.overflow = '';
     setTimeout(() => {
-      setShowMarathiScreen(false);
-    }, 300); // Faster transition
+      setShowIntro(false);
+    }, 200);
   };
 
   // 3. Rotating Taglines Effect
@@ -244,7 +203,7 @@ export default function App() {
   // 5. Scroll spy for navigation highlighting
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['top', 'about', 'speakers', 'tickets', 'sponsors', 'workshops', 'agenda', 'team', 'venue', 'faq', 'badge'];
+      const sections = ['top', 'about', 'speakers', 'tickets', 'sponsors', 'workshops', 'agenda', 'team', 'venue', 'faq'];
       const scrollPos = window.scrollY + 120;
       for (const sectionId of sections) {
         const el = document.getElementById(sectionId);
@@ -387,7 +346,7 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F2E9E4] text-[#22223B] relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F2E9E4] text-[#22223B] relative overflow-x-clip">
       {/* ─────────────────────────────────────────────────────────────
           INTRO / PRELOADER SCREEN
       ───────────────────────────────────────────────────────────── */}
@@ -478,95 +437,9 @@ export default function App() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          MARATHI TAGLINE SCREEN
-      ───────────────────────────────────────────────────────────── */}
-      {showMarathiScreen && (
-        <div
-          id="marathi-screen"
-          className={`fixed inset-0 z-[9999] bg-[#F2E9E4] flex flex-col justify-between p-6 sm:p-10 transition-all duration-700 ease-out select-none ${
-            marathiScreenDismissed ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
-          }`}
-        >
-          {/* Subtle Grid Background matching intro */}
-          <div
-            className="absolute inset-0 z-0 opacity-40 pointer-events-none"
-            style={{
-              backgroundImage:
-                'linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px)',
-              backgroundSize: '40px 40px'
-            }}
-          />
-
-          {/* Top Bar */}
-          <div className="relative z-10 flex items-center justify-between font-mono text-[11px] sm:text-xs text-[#8c97a5] uppercase tracking-wider">
-            <div className="flex items-center gap-3">
-              <AwsLogo className="h-6 sm:h-7 w-auto" />
-              <span className="hidden sm:inline text-[#22223B]/60">Community Day Kolhapur</span>
-            </div>
-            <button
-              onClick={handleDismissMarathiScreen}
-              className="text-[11px] font-mono uppercase bg-[#22223B] text-white px-2.5 py-1 rounded-sm hover:bg-[#4A4E69] hover:text-white transition-colors cursor-pointer"
-            >
-              Skip [Esc]
-            </button>
-          </div>
-
-          {/* Center Content */}
-          <div className="relative z-10 flex flex-col items-center justify-center text-center my-auto py-8 max-w-6xl mx-auto">
-            {/* Main Marathi Text */}
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight tracking-tight bg-gradient-to-r from-[#22223B] via-[#4A4E69] to-[#22223B] bg-clip-text text-transparent">
-                {typedMarathiTagline}
-                {typedMarathiTagline.length < 'कोल्हापूर: ऐतिहासिक आणि आधुनिकतेचा सुवर्णसंगम!'.length && (
-                  <span className="text-[#22223B] animate-pulse">|</span>
-                )}
-              </h2>
-            </div>
-
-            {/* English Translation */}
-            {typedMarathiTagline.length >= 'कोल्हापूर: ऐतिहासिक आणि आधुनिकतेचा सुवर्णसंगम!'.length && (
-              <div className="animate-in fade-in duration-500">
-                <p className="text-base sm:text-lg md:text-xl text-[#4A4E69] font-medium tracking-wide">
-                  Kolhapur: A Golden Confluence of History and Modernity!
-                </p>
-                <div className="w-24 sm:w-32 h-1 bg-gradient-to-r from-[#FF9900] to-[#C9ADA7] mt-6 rounded-full mx-auto" />
-              </div>
-            )}
-
-            {/* Decorative Palace Icon/Elements */}
-            <div className="mt-8 flex items-center gap-4 text-[#C9ADA7] opacity-60">
-              <GraduationCap className="w-6 h-6 sm:w-8 sm:h-8" />
-              <div className="w-12 h-0.5 bg-[#C9ADA7]" />
-              <Cloud className="w-6 h-6 sm:w-8 sm:h-8" />
-              <div className="w-12 h-0.5 bg-[#C9ADA7]" />
-              <Sparkles className="w-6 h-6 sm:w-8 sm:h-8" />
-            </div>
-          </div>
-
-          {/* Bottom Info */}
-          <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="font-mono text-[11px] text-[#64748b] tracking-wider uppercase">
-              Historic City • Modern Innovation • Student Community
-            </p>
-            <p className="font-mono text-[11px] text-[#64748b] tracking-wider uppercase">
-              November 1, 2026 • GCOEK
-            </p>
-          </div>
-
-          {/* Subtle progress indicator */}
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5">
-            <div
-              className="h-full bg-gradient-to-r from-[#FF9900] via-[#C9ADA7] to-[#4A4E69] animate-pulse"
-              style={{ width: '100%' }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ─────────────────────────────────────────────────────────────
           STICKY HEADER / NAV
       ───────────────────────────────────────────────────────────── */}
-      {!showIntro && !showMarathiScreen && (
+      {!showIntro && (
         <>
       <header
         id="main-header"
@@ -600,7 +473,7 @@ export default function App() {
               { href: '#agenda', label: 'Schedule', id: 'agenda', isRoute: false },
               { href: '/team', label: 'Team', id: 'team', isRoute: true },
               { href: '#faq', label: 'FAQ', id: 'faq', isRoute: false },
-              { href: '#badge', label: 'Badge', id: 'badge', isRoute: false }
+              { href: '/badge', label: 'Badge', id: 'badge', isRoute: true }
             ].map(link => {
               const isActive = activeSection === link.id;
               
@@ -669,7 +542,7 @@ export default function App() {
               { href: '#agenda', label: 'Schedule', isRoute: false },
               { href: '/team', label: 'Team', isRoute: true },
               { href: '#faq', label: 'FAQ', isRoute: false },
-              { href: '#badge', label: 'Badge', isRoute: false }
+              { href: '/badge', label: 'Badge', isRoute: true }
             ].map(link => {
               if (link.isRoute) {
                 return (
@@ -1447,30 +1320,30 @@ export default function App() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-8 max-w-4xl mx-auto">
+          <div className="flex flex-col gap-8 max-w-4xl mx-auto pb-[30vh]">
             {/* Workshop 1 */}
-            <div className="bg-white border border-[#22223B]/15 rounded-2xl p-6 sm:p-10 shadow-sm hover:shadow-md transition-shadow">
+            <div className="sticky top-24 sm:top-28 z-10 bg-[#22223B] border border-[#C9ADA7]/30 rounded-2xl p-6 sm:p-10 shadow-xl transition-shadow text-white">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-[#22223B] text-white px-2.5 py-1">
+                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-[#C9ADA7] text-[#22223B] px-2.5 py-1">
                   GENAI &amp; LLMS
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-[#64748b] font-mono">
+                <span className="flex items-center gap-1.5 text-xs text-white/70 font-mono">
                   <Clock className="w-3.5 h-3.5" />
                   <span>2.5 Hours</span>
                 </span>
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-semibold text-[#22223B] tracking-tight leading-snug">
+              <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight leading-snug">
                 Building Generative AI Applications with Amazon Bedrock
               </h3>
-              <p className="mt-3 text-xs sm:text-sm text-[#4A4E69] font-medium leading-relaxed">
+              <p className="mt-3 text-xs sm:text-sm text-white/80 font-medium leading-relaxed">
                 Step-by-step hands-on guide to building multi-agent RAG (Retrieval-Augmented Generation) applications
                 using Claude 3, Bedrock Knowledge Bases, and LangChain.
               </p>
 
-              <div className="my-5 h-px bg-[#22223B]/10" />
+              <div className="my-5 h-px bg-white/10" />
 
-              <div className="space-y-2 text-xs sm:text-sm text-[#22223B]">
+              <div className="space-y-2 text-xs sm:text-sm text-white/90">
                 <p className="flex items-start gap-2">
                   <Laptop className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
                   <span>
@@ -1485,13 +1358,13 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="mt-6 pt-5 border-t border-[#22223B]/10 flex items-center justify-between">
-                <span className="font-mono text-xs text-[#64748b] uppercase tracking-wider font-semibold">
+              <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
+                <span className="font-mono text-xs text-white/70 uppercase tracking-wider font-semibold">
                   LEVEL: INTERMEDIATE
                 </span>
                 <a
                   href="#tickets"
-                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#22223B] hover:bg-[#4A4E69] text-white font-mono text-[11px] font-bold uppercase tracking-wider transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#C9ADA7] hover:bg-white text-[#22223B] font-mono text-[11px] font-bold uppercase tracking-wider transition-colors"
                 >
                   <span>RESERVE SEAT</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1500,28 +1373,28 @@ export default function App() {
             </div>
 
             {/* Workshop 2 */}
-            <div className="bg-white border border-[#22223B]/15 rounded-2xl p-6 sm:p-10 shadow-sm hover:shadow-md transition-shadow">
+            <div className="sticky top-28 sm:top-32 z-20 bg-[#4A4E69] border border-[#C9ADA7]/30 rounded-2xl p-6 sm:p-10 shadow-2xl transition-shadow text-white">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-[#4A4E69] text-white px-2.5 py-1">
+                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-[#22223B] text-white px-2.5 py-1">
                   CLOUD &amp; CONTAINERS
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-[#64748b] font-mono">
+                <span className="flex items-center gap-1.5 text-xs text-white/70 font-mono">
                   <Clock className="w-3.5 h-3.5" />
                   <span>2 Hours</span>
                 </span>
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-semibold text-[#22223B] tracking-tight leading-snug">
+              <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight leading-snug">
                 Kubernetes on AWS: Deploying &amp; Scaling Elastic Microservices
               </h3>
-              <p className="mt-3 text-xs sm:text-sm text-[#4A4E69] font-medium leading-relaxed">
+              <p className="mt-3 text-xs sm:text-sm text-white/80 font-medium leading-relaxed">
                 Set up an Amazon EKS cluster, configure Helm charts, deploy microservices, and configure autoscaling
                 with Karpenter and Prometheus monitoring.
               </p>
 
-              <div className="my-5 h-px bg-[#22223B]/10" />
+              <div className="my-5 h-px bg-white/10" />
 
-              <div className="space-y-2 text-xs sm:text-sm text-[#22223B]">
+              <div className="space-y-2 text-xs sm:text-sm text-white/90">
                 <p className="flex items-start gap-2">
                   <Laptop className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
                   <span>
@@ -1536,13 +1409,13 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="mt-6 pt-5 border-t border-[#22223B]/10 flex items-center justify-between">
-                <span className="font-mono text-xs text-[#64748b] uppercase tracking-wider font-semibold">
+              <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
+                <span className="font-mono text-xs text-white/70 uppercase tracking-wider font-semibold">
                   LEVEL: ADVANCED
                 </span>
                 <a
                   href="#tickets"
-                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#22223B] hover:bg-[#4A4E69] text-white font-mono text-[11px] font-bold uppercase tracking-wider transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#22223B] hover:bg-[#1a1a2f] text-white font-mono text-[11px] font-bold uppercase tracking-wider transition-colors"
                 >
                   <span>RESERVE SEAT</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1653,7 +1526,7 @@ export default function App() {
             {/* Venue Image */}
             <div className="rounded-xl overflow-hidden shadow-lg bg-[#22223B] aspect-[4/3] relative group">
               <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/320px-Camponotus_flavomarginatus_ant.jpg"
+                src="/venue-hall.jpg"
                 alt="V.T. Patil Convention Hall, Rajarampuri, Kolhapur"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 onError={(e) => {
@@ -1822,11 +1695,6 @@ export default function App() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          BADGE SECTION (IN-PAGE GENERATOR MATCHING SCREENSHOTS)
-      ───────────────────────────────────────────────────────────── */}
-      <SocialBadge />
-
-      {/* ─────────────────────────────────────────────────────────────
           FOOTER
       ───────────────────────────────────────────────────────────── */}
       <footer className="bg-[#22223B] text-white border-t border-white/5 pt-16">
@@ -1857,7 +1725,7 @@ export default function App() {
               <Link to="/team" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Team</Link>
               <a href="#venue" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Venue</a>
               <a href="#faq" className="text-white/60 hover:text-[#C9ADA7] transition-colors">FAQ</a>
-              <a href="#badge" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Badge</a>
+              <Link to="/badge" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Badge</Link>
             </div>
 
             <div className="flex flex-col gap-2.5">
