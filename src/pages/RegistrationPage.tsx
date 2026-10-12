@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import {
   loadTicketConfig,
+  subscribeToTicketConfig,
   getTierEffectiveStatus,
   TicketSystemConfig,
   TicketCode,
@@ -142,16 +143,13 @@ export default function RegistrationPage() {
   const [activeTab, setActiveTab] = useState<'register' | 'track'>('register');
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
-  // Live ticket pricing and tier resolution
+  // Live ticket pricing and tier resolution synced with Firestore
   const [ticketConfig, setTicketConfig] = useState<TicketSystemConfig>(() => loadTicketConfig());
   useEffect(() => {
-    const sync = () => setTicketConfig(loadTicketConfig());
-    window.addEventListener('ticketConfigUpdated', sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener('ticketConfigUpdated', sync);
-      window.removeEventListener('storage', sync);
-    };
+    const unsubscribe = subscribeToTicketConfig((updated) => {
+      setTicketConfig(updated);
+    });
+    return () => unsubscribe();
   }, []);
 
   // Determine active ticket tier (Early Bird ₹249 by default, or Regular ₹349 if open)

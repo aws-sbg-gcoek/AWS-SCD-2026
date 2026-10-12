@@ -13,6 +13,7 @@ import {
   TicketCode,
   TicketSystemConfig,
   loadTicketConfig,
+  subscribeToTicketConfig,
   getTierEffectiveStatus,
 } from './utils/ticketConfig';
 import { Link, useNavigate } from 'react-router-dom';
@@ -96,19 +97,12 @@ export default function App() {
   const [ticketConfig, setTicketConfig] = useState<TicketSystemConfig>(() => loadTicketConfig());
   const [checkoutTicket, setCheckoutTicket] = useState<TicketAvailability | null>(null);
 
-  // Sync ticket configuration in real-time with Admin changes and timer ticks
+  // Sync ticket configuration in real-time with Firestore & Admin changes
   useEffect(() => {
-    const handleConfigSync = () => {
-      setTicketConfig(loadTicketConfig());
-    };
-    window.addEventListener('ticketConfigUpdated', handleConfigSync);
-    window.addEventListener('storage', handleConfigSync);
-    const interval = setInterval(handleConfigSync, 10000);
-    return () => {
-      window.removeEventListener('ticketConfigUpdated', handleConfigSync);
-      window.removeEventListener('storage', handleConfigSync);
-      clearInterval(interval);
-    };
+    const unsubscribe = subscribeToTicketConfig((updated) => {
+      setTicketConfig(updated);
+    });
+    return () => unsubscribe();
   }, []);
 
   const createTicketForCheckout = (code: TicketCode): TicketAvailability => {

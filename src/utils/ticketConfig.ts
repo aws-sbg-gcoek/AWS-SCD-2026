@@ -1,3 +1,6 @@
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db, isFirebaseConfigured } from '../services/firebase';
+
 export type TicketCode = 'super_early_bird' | 'early_bird' | 'regular';
 export type TicketStatus = 'sold_out' | 'open' | 'coming_soon';
 export type ScheduleMode = 'manual' | 'scheduled';
@@ -104,16 +107,100 @@ export function loadTicketConfig(): TicketSystemConfig {
   return DEFAULT_TICKETS_CONFIG;
 }
 
-export function saveTicketConfig(config: TicketSystemConfig): void {
-  if (typeof window === 'undefined') return;
+/**
+ * Saves ticket tier configuration to both localStorage and Cloud Firestore.
+ * Automatically synchronizes changes across all users and deployments in real time.
+ */
+export async function saveTicketConfig(config: TicketSystemConfig): Promise<void> {
   const updated: TicketSystemConfig = {
     ...config,
     version: (config.version || 1) + 1,
     lastUpdated: new Date().toISOString(),
   };
-  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
-  // Broadcast update across windows/components
-  window.dispatchEvent(new CustomEvent('ticketConfigUpdated', { detail: updated }));
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('ticketConfigUpdated', { detail: updated }));
+  }
+
+  // Sync to Cloud Firestore if configured
+  if (isFirebaseConfigured() && db) {
+    try {
+      const docRef = doc(db, 'system_config', 'ticket_tiers');
+      await setDoc(docRef, updated, { merge: true });
+    } catch (err) {
+      console.warn('Error saving ticket config to Firestore:', err);
+    }
+  }
+}
+
+/**
+ * Real-time listener for ticket configuration.
+ * Listens to Cloud Firestore so price changes in Admin immediately update public panels.
+ */
+export function subscribeToTicketConfig(callback: (config: TicketSystemConfig) => void): () => void {
+  // 1. Immediately fire with local configuration
+  callback(loadTicketConfig());
+
+  // 2. Real-time Firestore sync
+  let firestoreUnsub: (() => void) | null = null;
+  if (isFirebaseConfigured() && db) {
+    try {
+      const docRef = doc(db, 'system_config', 'ticket_tiers');
+      firestoreUnsub = onSnapshot(
+        docRef,
+        snapshot => {
+          if (snapshot.exists()) {
+            const data = snapshot.data() as TicketSystemConfig;
+            if (data && data.tiers) {
+              const merged: TicketSystemConfig = {
+                ...DEFAULT_TICKETS_CONFIG,
+                ...data,
+                tiers: {
+                  super_early_bird: {
+                    ...DEFAULT_TICKETS_CONFIG.tiers.super_early_bird,
+                    ...(data.tiers.super_early_bird || {}),
+                  },
+                  early_bird: {
+                    ...DEFAULT_TICKETS_CONFIG.tiers.early_bird,
+                    ...(data.tiers.early_bird || {}),
+                  },
+                  regular: {
+                    ...DEFAULT_TICKETS_CONFIG.tiers.regular,
+                    ...(data.tiers.regular || {}),
+                  },
+                },
+              };
+              if (typeof window !== 'undefined') {
+                localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(merged));
+              }
+              callback(merged);
+            }
+          }
+        },
+        err => {
+          console.warn('Firestore ticket config onSnapshot error:', err);
+        }
+      );
+    } catch (err) {
+      console.warn('Error setting up Firestore ticket config listener:', err);
+    }
+  }
+
+  // 3. Multi-window / local event listeners
+  const handleLocal = () => callback(loadTicketConfig());
+  if (typeof window !== 'undefined') {
+    window.addEventListener('ticketConfigUpdated', handleLocal);
+    window.addEventListener('storage', handleLocal);
+  }
+
+  return () => {
+    if (firestoreUnsub) firestoreUnsub();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('ticketConfigUpdated', handleLocal);
+      window.removeEventListener('storage', handleLocal);
+    }
+  };
 }
 
 export function getTierEffectiveStatus(

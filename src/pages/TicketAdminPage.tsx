@@ -10,6 +10,7 @@ import {
   getTierEffectiveStatus,
   loadTicketConfig,
   saveTicketConfig,
+  subscribeToTicketConfig,
 } from '../utils/ticketConfig';
 import {
   StudentRegistration,
@@ -100,19 +101,24 @@ export default function TicketAdminPage() {
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<string>('');
 
-  // Live clock & live real-time registration sync (Firestore / Local)
+  // Live clock, live real-time registration sync & live ticket tiers config (Firestore / Local)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    const unsubscribe = subscribeToRegistrations(records => {
+    const unsubscribeRegistrations = subscribeToRegistrations(records => {
       setRegistrations(records);
+    });
+
+    const unsubscribeConfig = subscribeToTicketConfig(liveConfig => {
+      setConfig(liveConfig);
     });
 
     return () => {
       clearInterval(timer);
-      unsubscribe();
+      unsubscribeRegistrations();
+      unsubscribeConfig();
     };
   }, []);
 
@@ -146,15 +152,15 @@ export default function TicketAdminPage() {
     }));
   };
 
-  const handleSaveTiers = () => {
-    saveTicketConfig(config);
+  const handleSaveTiers = async () => {
+    await saveTicketConfig(config);
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
 
-  const handleResetDefaults = () => {
+  const handleResetDefaults = async () => {
     if (window.confirm('Reset all ticket tier configurations and schedules to standard defaults?')) {
-      saveTicketConfig(DEFAULT_TICKETS_CONFIG);
+      await saveTicketConfig(DEFAULT_TICKETS_CONFIG);
       setConfig(DEFAULT_TICKETS_CONFIG);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
