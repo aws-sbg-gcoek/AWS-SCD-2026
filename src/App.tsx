@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LeadershipPreview from './components/LeadershipPreview';
 import {
   fetchTicketAvailability,
@@ -9,7 +9,13 @@ import {
   TicketCheckoutDialog,
   TicketType,
 } from './components/TicketCheckout';
-import { Link } from 'react-router-dom';
+import {
+  TicketCode,
+  TicketSystemConfig,
+  loadTicketConfig,
+  getTierEffectiveStatus,
+} from './utils/ticketConfig';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -37,9 +43,10 @@ import {
   Box,
   GraduationCap
 } from 'lucide-react';
+import { BuilderCross, BuilderGroupPill, BuilderMosaicHero, BuilderBannerStrip } from './components/BuilderMotif';
 
 // AWS Logo SVG Component
-function AwsLogo({ className = "h-8 w-auto", dark = false }: { className?: string; dark?: boolean }) {
+function AwsLogo({ className = "h-8 w-auto", dark = true }: { className?: string; dark?: boolean }) {
   return (
     <svg className={className} viewBox="0 0 304 182" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path
@@ -86,32 +93,49 @@ export default function App() {
   const carouselRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [tickets, setTickets] = useState<TicketAvailability[]>([]);
-  const [ticketsLoading, setTicketsLoading] = useState(true);
-  const [ticketsError, setTicketsError] = useState('');
+  const [ticketConfig, setTicketConfig] = useState<TicketSystemConfig>(() => loadTicketConfig());
   const [checkoutTicket, setCheckoutTicket] = useState<TicketAvailability | null>(null);
 
+  // Sync ticket configuration in real-time with Admin changes and timer ticks
   useEffect(() => {
-    const controller = new AbortController();
-    fetchTicketAvailability(controller.signal)
-      .then(setTickets)
-      .catch((error: unknown) => {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        console.error('Could not load ticket availability:', error);
-        setTicketsError(error instanceof Error ? error.message : 'Could not load ticket availability.');
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setTicketsLoading(false);
-      });
-    return () => controller.abort();
+    const handleConfigSync = () => {
+      setTicketConfig(loadTicketConfig());
+    };
+    window.addEventListener('ticketConfigUpdated', handleConfigSync);
+    window.addEventListener('storage', handleConfigSync);
+    const interval = setInterval(handleConfigSync, 10000);
+    return () => {
+      window.removeEventListener('ticketConfigUpdated', handleConfigSync);
+      window.removeEventListener('storage', handleConfigSync);
+      clearInterval(interval);
+    };
   }, []);
 
-  const earlyBirdTicket = tickets.find(ticket => ticket.code === 'early_bird');
-  const regularTicket = tickets.find(ticket => ticket.code === 'regular');
-  const openTicketCheckout = (ticketType: TicketType) => {
-    const ticket = tickets.find(item => item.code === ticketType);
-    if (ticket?.available) setCheckoutTicket(ticket);
+  const createTicketForCheckout = (code: TicketCode): TicketAvailability => {
+    const tier = ticketConfig.tiers[code];
+    const effective = getTierEffectiveStatus(tier);
+    return {
+      code,
+      label: tier.label,
+      pricePaise: tier.price * 100,
+      currency: 'INR',
+      available: effective.isOpen,
+      availabilityReason: effective.isOpen ? 'available' : effective.status,
+      remaining: tier.remaining,
+      startsAt: tier.openFrom,
+      endsAt: tier.openUntil,
+    };
   };
+
+  const navigate = useNavigate();
+
+  const openTicketCheckout = (ticketType: TicketType) => {
+    navigate('/register');
+  };
+
+  const superEarlyEffective = getTierEffectiveStatus(ticketConfig.tiers.super_early_bird);
+  const earlyBirdEffective = getTierEffectiveStatus(ticketConfig.tiers.early_bird);
+  const regularEffective = getTierEffectiveStatus(ticketConfig.tiers.regular);
 
   // 1. Preloader Effect
   useEffect(() => {
@@ -381,42 +405,43 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F2E9E4] text-[#22223B] relative overflow-x-clip">
+    <div className="min-h-screen bg-[#070B13] text-[#F8FAFC] aws-builder-grid relative overflow-x-clip">
       {/* ─────────────────────────────────────────────────────────────
-          INTRO / PRELOADER SCREEN
+          INTRO / PRELOADER SCREEN (AWS BUILDER CENTER THEME)
       ───────────────────────────────────────────────────────────── */}
       {showIntro && (
         <div
           id="intro-screen"
-          className={`fixed inset-0 z-[9999] bg-[#F2E9E4] flex flex-col justify-between p-6 sm:p-10 transition-all duration-700 ease-out select-none ${
+          className={`fixed inset-0 z-[9999] bg-[#070B13] aws-builder-grid flex flex-col justify-between p-6 sm:p-10 transition-all duration-700 ease-out select-none ${
             introDismissed ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
           }`}
         >
-          {/* Subtle Grid Background */}
+          {/* Subtle Builder Grid Background */}
           <div
-            className="absolute inset-0 z-0 opacity-40 pointer-events-none"
+            className="absolute inset-0 z-0 opacity-20 pointer-events-none"
             style={{
               backgroundImage:
-                'linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px)',
-              backgroundSize: '40px 40px'
+                'linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)',
+              backgroundSize: '48px 48px'
             }}
           />
 
           {/* Top Bar */}
-          <div className="relative z-10 flex items-center justify-between font-mono text-[11px] sm:text-xs text-[#8c97a5] uppercase tracking-wider">
+          <div className="relative z-10 flex items-center justify-between font-mono text-[11px] sm:text-xs text-slate-400 uppercase tracking-wider">
             <div className="flex items-center gap-3">
-              <AwsLogo className="h-6 sm:h-7 w-auto" />
+              <AwsLogo className="h-6 sm:h-7 w-auto" dark />
+              <BuilderGroupPill text="AWS Student Builder Group" className="hidden sm:inline-flex" />
             </div>
             <div className="flex items-center gap-2 sm:gap-4">
-              <div className="flex items-center gap-1.5 bg-[#22223B]/5 px-2.5 py-1 rounded-sm border border-[#22223B]/10">
-                <span className="w-2 h-2 rounded-full bg-[#C9ADA7] animate-pulse" />
+              <div className="flex items-center gap-1.5 bg-[#0B1120] px-2.5 py-1 rounded-sm border border-white/10">
+                <span className="w-2 h-2 rounded-full bg-[#06B6D4] animate-pulse" />
                 <span className="hidden xs:inline">AP-SOUTH-1</span>
-                <span className="text-[#22223B]/30 hidden xs:inline">•</span>
-                <span className="font-mono text-[10px] sm:text-xs text-[#22223B]">16.7050° N, 74.2433° E</span>
+                <span className="text-white/30 hidden xs:inline">•</span>
+                <span className="font-mono text-[10px] sm:text-xs text-slate-300">16.7050° N, 74.2433° E</span>
               </div>
               <button
                 onClick={handleDismissIntro}
-                className="text-[11px] font-mono uppercase bg-[#22223B] text-white px-2.5 py-1 rounded-sm hover:bg-[#4A4E69] hover:text-white transition-colors cursor-pointer"
+                className="text-[11px] font-mono uppercase bg-white/10 border border-white/20 text-white px-2.5 py-1 rounded-sm hover:bg-[#A855F7] hover:border-[#A855F7] hover:text-white transition-colors cursor-pointer"
               >
                 Skip [Esc]
               </button>
@@ -425,46 +450,47 @@ export default function App() {
 
           {/* Center Title Content */}
           <div className="relative z-10 flex flex-col items-center justify-center text-center my-auto py-8">
-            <div className="flex flex-wrap items-baseline justify-center gap-2 sm:gap-3 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#22223B]">
-              <span className="text-[#FF9900]">AWS</span>
-              <span className="bg-gradient-to-r from-[#22223B] to-[#4A4E69] bg-clip-text text-transparent">
+            <BuilderBannerStrip className="mb-6 opacity-90" />
+            <div className="flex flex-wrap items-baseline justify-center gap-2 sm:gap-3 text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-white">
+              <span className="text-white">AWS</span>
+              <span className="bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#06B6D4] bg-clip-text text-transparent">
                 {typedTitle}
               </span>
-              <span className="font-light text-[#22223B] animate-cursor">|</span>
+              <span className="font-light text-[#A855F7] animate-cursor">|</span>
             </div>
-            <p className="font-mono text-[11px] sm:text-xs md:text-sm text-[#64748b] mt-4 tracking-widest uppercase">
+            <p className="font-mono text-[11px] sm:text-xs md:text-sm text-slate-400 mt-4 tracking-widest uppercase">
               STUDENT COMMUNITY DAY &nbsp;//&nbsp; NOV 1, 2026 &nbsp;•&nbsp; GCOEK KOLHAPUR
             </p>
-            <div className="w-24 sm:w-32 h-1 bg-gradient-to-r from-[#FF9900] to-[#C9ADA7] mt-6 rounded-full" />
+            <div className="w-28 sm:w-36 h-1 bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#06B6D4] mt-6 rounded-full" />
           </div>
 
           {/* Bottom Bar: Terminal & Counter */}
           <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
-            <div className="font-mono text-[11px] text-[#64748b] leading-relaxed max-w-md w-full space-y-0.5">
+            <div className="font-mono text-[11px] text-slate-400 leading-relaxed max-w-md w-full space-y-0.5">
               {terminalLogs.map((log, index) => (
                 <div
                   key={index}
                   className={`flex items-start gap-1.5 ${
-                    index === terminalLogs.length - 1 && log.includes('READY') ? 'text-[#C9ADA7] font-bold' : ''
+                    index === terminalLogs.length - 1 && log.includes('READY') ? 'text-[#06B6D4] font-bold' : ''
                   }`}
                 >
-                  <span className="text-[#C9ADA7] select-none">&gt;</span>
+                  <span className="text-[#A855F7] select-none">&gt;</span>
                   <span>{log}</span>
                 </div>
               ))}
             </div>
             <div className="self-end sm:self-auto flex items-baseline">
-              <span className="font-extrabold text-5xl sm:text-7xl md:text-8xl text-[#22223B] tracking-tighter leading-none">
+              <span className="font-extrabold text-5xl sm:text-7xl md:text-8xl text-white tracking-tighter leading-none font-mono">
                 {Math.floor(introProgress).toString().padStart(3, '0')}
               </span>
-              <span className="font-mono text-sm sm:text-lg text-[#64748b] font-semibold ml-1">%</span>
+              <span className="font-mono text-sm sm:text-lg text-slate-400 font-semibold ml-1">%</span>
             </div>
           </div>
 
           {/* Progress Bar at very bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/5">
+          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/10">
             <div
-              className="h-full bg-gradient-to-r from-[#22223B] via-[#4A4E69] to-[#C9ADA7] transition-all duration-75 ease-linear"
+              className="h-full bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#06B6D4] transition-all duration-75 ease-linear"
               style={{ width: `${introProgress}%` }}
             />
           </div>
@@ -478,19 +504,19 @@ export default function App() {
         <>
       <header
         id="main-header"
-        className="fixed top-0 inset-x-0 z-50 bg-white/98 backdrop-blur-md border-b border-[#22223B]/10 transition-shadow duration-300 shadow-sm"
+        className="fixed top-0 inset-x-0 z-50 bg-[#070B13]/90 backdrop-blur-md border-b border-white/10 transition-shadow duration-300 shadow-xl"
       >
         <div className="max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10 h-16 sm:h-[72px] flex items-center justify-between">
           {/* Logo brand */}
           <a href="#top" className="flex items-center gap-2.5 sm:gap-3 group focus:outline-none">
-            <AwsLogo className="h-7 sm:h-9 w-auto transition-transform group-hover:scale-105" />
+            <AwsLogo className="h-7 sm:h-9 w-auto transition-transform group-hover:scale-105" dark />
             <div className="flex flex-col">
-              <span className="font-extrabold text-sm sm:text-[15px] tracking-tight text-[#22223B] leading-none">
+              <span className="font-extrabold text-sm sm:text-[15px] tracking-tight text-white leading-none">
                 COMMUNITY DAY
               </span>
-              <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-[#22223B]/60 mt-1 flex items-center gap-1">
-                KOLHAPUR 2026 <span className="text-[#C9ADA7] font-bold">·</span>{' '}
-                <span className="text-[#4A4E69] font-bold inline-block min-w-[50px] transition-all duration-300">
+              <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-slate-400 mt-1 flex items-center gap-1">
+                KOLHAPUR 2026 <span className="text-[#A855F7] font-bold">·</span>{' '}
+                <span className="text-[#06B6D4] font-bold inline-block min-w-[50px] transition-all duration-300">
                   {ROTATING_TAGS[tagIndex]}
                 </span>
               </span>
@@ -517,7 +543,7 @@ export default function App() {
                   <Link
                     key={link.href}
                     to={link.href}
-                    className="text-[13.5px] font-medium transition-colors relative py-1 text-[#22223B] hover:text-[#4A4E69]"
+                    className="text-[13.5px] font-medium transition-colors relative py-1 text-slate-300 hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -529,19 +555,19 @@ export default function App() {
                   key={link.href}
                   href={link.href}
                   className={`text-[13.5px] font-medium transition-colors relative py-1 ${
-                    isActive ? 'text-[#4A4E69] font-semibold' : 'text-[#22223B] hover:text-[#4A4E69]'
+                    isActive ? 'text-white font-semibold' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   {link.label}
                   {isActive && (
-                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-[#C9ADA7] rounded-full" />
+                    <span className="absolute bottom-0 inset-x-0 h-0.5 bg-gradient-to-r from-[#A855F7] to-[#EC4899] rounded-full" />
                   )}
                 </a>
               );
             })}
             <a
               href="#tickets"
-              className="ml-2 inline-flex items-center gap-2 bg-[#4A4E69] text-white hover:bg-[#22223B] font-mono text-xs font-bold uppercase tracking-wider px-4 py-2 transition-colors duration-200"
+              className="ml-2 inline-flex items-center gap-2 bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white font-mono text-xs font-bold uppercase tracking-wider px-4 py-2 transition-all shadow-md shadow-purple-500/20"
             >
               Get Tickets
             </a>
@@ -551,13 +577,13 @@ export default function App() {
           <div className="flex items-center gap-3 lg:hidden">
             <a
               href="#tickets"
-              className="text-xs font-mono font-bold uppercase bg-[#4A4E69] text-white px-3 py-1.5 rounded-sm"
+              className="text-xs font-mono font-bold uppercase bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white px-3 py-1.5 rounded-sm"
             >
               Tickets
             </a>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-[#22223B] hover:bg-black/5 rounded-md border border-[#22223B]/15 transition-colors focus:outline-none"
+              className="p-2 text-white hover:bg-white/10 rounded-md border border-white/15 transition-colors focus:outline-none"
               aria-label="Toggle mobile menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -567,7 +593,7 @@ export default function App() {
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t border-[#22223B]/10 px-4 py-4 space-y-1 shadow-xl animate-in slide-in-from-top-2 duration-200">
+          <div className="lg:hidden bg-[#0B1120] border-t border-white/10 px-4 py-4 space-y-1 shadow-2xl animate-in slide-in-from-top-2 duration-200">
             {[
               { href: '#about', label: 'About', isRoute: false },
               { href: '#speakers', label: 'Speakers', isRoute: false },
@@ -585,18 +611,18 @@ export default function App() {
                     key={link.href}
                     to={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2.5 text-sm font-medium text-[#22223B] hover:bg-[#F2E9E4] hover:text-[#4A4E69] rounded-md transition-colors"
+                    className="block px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white rounded-md transition-colors"
                   >
                     {link.label}
                   </Link>
                 );
               }
-              
               return (
                 <a
                   key={link.href}
                   href={link.href}
-                  className="block px-3 py-2.5 text-sm font-medium text-[#22223B] hover:bg-[#F2E9E4] hover:text-[#4A4E69] rounded-md transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2.5 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white rounded-md transition-colors"
                 >
                   {link.label}
                 </a>
@@ -607,18 +633,20 @@ export default function App() {
       </header>
 
       {/* ─────────────────────────────────────────────────────────────
-          HERO SECTION
+          HERO SECTION (AWS BUILDER CENTER MODULAR GRID)
       ───────────────────────────────────────────────────────────── */}
       <section
         id="top"
         ref={heroRef}
-        className="relative min-h-[92vh] sm:min-h-screen flex flex-col justify-end overflow-hidden pt-24 sm:pt-28 pb-8 sm:pb-12 bg-[#22223B]"
+        className="relative min-h-[92vh] sm:min-h-screen flex flex-col justify-end overflow-hidden pt-24 sm:pt-28 pb-8 sm:pb-12 bg-[#070B13] aws-builder-grid"
       >
+        {/* Floating Builder Mosaic Pixel Cluster (Hero Visual from reference images) */}
+        <BuilderMosaicHero className="hidden xl:block absolute right-16 top-32 z-10" />
 
         {/* Decorative Watermark Tag Text */}
         <div
           aria-hidden="true"
-          className="absolute -right-4 top-1/2 -translate-y-1/2 text-[100px] xs:text-[140px] sm:text-[200px] md:text-[260px] lg:text-[320px] font-black text-white/[0.04] pointer-events-none select-none tracking-tighter leading-none transition-all duration-700 uppercase"
+          className="absolute -right-4 top-1/2 -translate-y-1/2 text-[100px] xs:text-[140px] sm:text-[200px] md:text-[260px] lg:text-[320px] font-black text-white/[0.03] pointer-events-none select-none tracking-tighter leading-none transition-all duration-700 uppercase font-mono"
         >
           {BG_TEXTS[tagIndex]}
         </div>
@@ -626,44 +654,47 @@ export default function App() {
         <div className="relative z-10 max-w-[1720px] w-full mx-auto px-4 sm:px-8 lg:px-10 flex flex-col gap-8 sm:gap-12 mt-auto">
           {/* Main Heading & Intro */}
           <div className="max-w-3xl">
-            <p className="font-mono text-xs uppercase tracking-widest text-[#C9ADA7] font-bold mb-4">AWS Student Community Day</p>
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <BuilderGroupPill text="AWS Student Builder Group" />
+              <span className="font-mono text-xs uppercase tracking-widest text-slate-400 hidden sm:inline">• AWS Builder Center</span>
+            </div>
             <h1 className="text-4xl xs:text-5xl sm:text-6xl md:text-7xl lg:text-[80px] font-extrabold text-white leading-[1.06] tracking-tight drop-shadow-sm">
               Where Builders
               <br />
               Meet{' '}
-              <span className="text-[#C9ADA7] underline decoration-[#C9ADA7]/50 decoration-4 sm:decoration-6 underline-offset-4 sm:underline-offset-8 transition-all duration-300">
+              <span className="bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#06B6D4] bg-clip-text text-transparent underline decoration-[#A855F7]/40 decoration-4 sm:decoration-6 underline-offset-4 sm:underline-offset-8 transition-all duration-300">
                 {ROTATING_TAGS[tagIndex]}
               </span>
               .
             </h1>
-            <p className="mt-5 sm:mt-7 text-base sm:text-lg md:text-xl text-white/85 max-w-2xl leading-relaxed font-normal drop-shadow-sm">
+            <p className="mt-5 sm:mt-7 text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed font-normal">
               A one-day, community-run AWS conference for students, developers, architects, and the cloud-curious.
               Deep talks, hands-on workshops, and the kind of people you'll want to build the future with.
             </p>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-md mt-6 sm:mt-8">
-              <div className="bg-white/10 backdrop-blur-sm border border-white/15 p-3 sm:p-4 text-center rounded-lg shadow-sm">
-                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+              <div className="bg-[#0B1120]/90 backdrop-blur-sm border border-white/10 p-3 sm:p-4 text-center rounded-xl shadow-lg hover:border-[#A855F7]/40 transition-colors">
+                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight font-mono">
                   {statAttendees}+
                 </p>
-                <p className="font-mono text-[9px] sm:text-[11px] text-[#C9ADA7] font-bold uppercase tracking-wider mt-1">
+                <p className="font-mono text-[9px] sm:text-[11px] text-[#A855F7] font-bold uppercase tracking-wider mt-1">
                   Attendees
                 </p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/15 p-3 sm:p-4 text-center rounded-lg shadow-sm">
-                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+              <div className="bg-[#0B1120]/90 backdrop-blur-sm border border-white/10 p-3 sm:p-4 text-center rounded-xl shadow-lg hover:border-[#EC4899]/40 transition-colors">
+                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight font-mono">
                   {statSpeakers}+
                 </p>
-                <p className="font-mono text-[9px] sm:text-[11px] text-[#C9ADA7] font-bold uppercase tracking-wider mt-1">
+                <p className="font-mono text-[9px] sm:text-[11px] text-[#EC4899] font-bold uppercase tracking-wider mt-1">
                   Speakers
                 </p>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm border border-white/15 p-3 sm:p-4 text-center rounded-lg shadow-sm">
-                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+              <div className="bg-[#0B1120]/90 backdrop-blur-sm border border-white/10 p-3 sm:p-4 text-center rounded-xl shadow-lg hover:border-[#06B6D4]/40 transition-colors">
+                <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight font-mono">
                   {statSessions}+
                 </p>
-                <p className="font-mono text-[9px] sm:text-[11px] text-[#C9ADA7] font-bold uppercase tracking-wider mt-1">
+                <p className="font-mono text-[9px] sm:text-[11px] text-[#06B6D4] font-bold uppercase tracking-wider mt-1">
                   Sessions
                 </p>
               </div>
@@ -672,14 +703,14 @@ export default function App() {
 
           {/* Hero Bottom Bar */}
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pt-4 border-t border-white/10">
-            <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-mono text-xs sm:text-sm text-white/85 tracking-wider uppercase font-semibold">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-8 font-mono text-xs sm:text-sm text-slate-300 tracking-wider uppercase font-semibold">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[#C9ADA7]" />
+                <MapPin className="w-4 h-4 text-[#06B6D4]" />
                 <span>KOLHAPUR, INDIA</span>
               </div>
               <span className="hidden sm:inline text-white/30">•</span>
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#C9ADA7]" />
+                <Calendar className="w-4 h-4 text-[#A855F7]" />
                 <span>NOVEMBER 1, 2026</span>
               </div>
             </div>
@@ -687,14 +718,14 @@ export default function App() {
             <div className="flex flex-wrap gap-3">
               <a
                 href="#tickets"
-                className="inline-flex items-center justify-center gap-2.5 h-12 px-6 sm:px-8 bg-[#4A4E69] hover:bg-[#22223B] text-white font-mono text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-md hover:shadow-lg w-full sm:w-auto self-start sm:self-auto"
+                className="inline-flex items-center justify-center gap-2.5 h-12 px-6 sm:px-8 bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white font-mono text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 shadow-lg shadow-purple-500/25 w-full sm:w-auto self-start sm:self-auto"
               >
                 <span>GET TICKETS</span>
                 <ArrowUpRight className="w-4 h-4" />
               </a>
               <a
                 href="#agenda"
-                className="inline-flex items-center justify-center gap-2.5 h-12 px-6 sm:px-8 border border-white/40 hover:border-[#C9ADA7] text-white hover:text-[#C9ADA7] font-mono text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 w-full sm:w-auto self-start sm:self-auto"
+                className="inline-flex items-center justify-center gap-2.5 h-12 px-6 sm:px-8 border border-white/20 bg-white/5 hover:border-[#06B6D4] hover:text-[#06B6D4] text-white font-mono text-xs sm:text-sm font-bold uppercase tracking-wider transition-all duration-200 w-full sm:w-auto self-start sm:self-auto"
               >
                 <span>VIEW SCHEDULE</span>
               </a>
@@ -706,14 +737,21 @@ export default function App() {
       {/* ─────────────────────────────────────────────────────────────
           ABOUT SECTION (WHAT YOU CAN EXPECT)
       ───────────────────────────────────────────────────────────── */}
-      <section id="about" className="py-20 sm:py-24 bg-[#F2E9E4] overflow-hidden">
+      {/* ─────────────────────────────────────────────────────────────
+          ABOUT SECTION (WHAT YOU CAN EXPECT)
+      ───────────────────────────────────────────────────────────── */}
+      <section id="about" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white overflow-hidden border-t border-white/10">
         <div className="max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 sm:mb-12">
             <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight text-[#22223B]">
+              <div className="flex items-center gap-2 mb-3">
+                <BuilderCross className="w-5 h-5 text-[#A855F7]" />
+                <span className="font-mono text-xs uppercase tracking-widest text-[#06B6D4] font-bold">AWS BUILDER CENTER</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight text-white">
                 What you can expect
               </h2>
-              <p className="mt-3 sm:mt-4 text-sm sm:text-base text-[#64748b] max-w-2xl leading-relaxed">
+              <p className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-400 max-w-2xl leading-relaxed">
                 AWS Community Day is a <strong>full day</strong> of talks, workshops, and hallway conversations
                 organized by the local AWS community. No gatekeeping. Beginners welcomed at the front.
               </p>
@@ -723,14 +761,14 @@ export default function App() {
               <button
                 onClick={() => handleScrollCarousel('left')}
                 aria-label="Previous cards"
-                className="w-10 h-10 flex items-center justify-center bg-white border border-[#22223B]/20 text-[#22223B] hover:bg-[#22223B] hover:text-white transition-colors cursor-pointer shadow-sm"
+                className="w-10 h-10 flex items-center justify-center bg-[#0B1120] border border-white/15 text-white hover:border-[#A855F7] hover:text-[#A855F7] transition-colors cursor-pointer shadow-sm"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button
                 onClick={() => handleScrollCarousel('right')}
                 aria-label="Next cards"
-                className="w-10 h-10 flex items-center justify-center bg-white border border-[#22223B]/20 text-[#22223B] hover:bg-[#22223B] hover:text-white transition-colors cursor-pointer shadow-sm"
+                className="w-10 h-10 flex items-center justify-center bg-[#0B1120] border border-white/15 text-white hover:border-[#A855F7] hover:text-[#A855F7] transition-colors cursor-pointer shadow-sm"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -745,13 +783,12 @@ export default function App() {
               perspective: '1200px',
               perspectiveOrigin: 'center center',
               minHeight: '420px',
-              paddingLeft: 'max(1rem, calc(50vw - 170px))', // Center first card
-              paddingRight: 'max(1rem, calc(50vw - 170px))' // Allow last card to center too
+              paddingLeft: 'max(1rem, calc(50vw - 170px))',
+              paddingRight: 'max(1rem, calc(50vw - 170px))'
             }}
           >
             {/* Card 1 - Speaker Keynotes */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#22223B] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-[#22223B] relative overflow-hidden group">
-              {/* Subtle background image */}
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0B1120]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#A855F7]/50 relative overflow-hidden group">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
                 <img 
                   src="https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=400&h=400&fit=crop" 
@@ -760,13 +797,13 @@ export default function App() {
                 />
               </div>
               <div className="relative z-10">
-                <Award className="w-11 h-11 text-[#FF9900] stroke-[1.5]" />
+                <Award className="w-11 h-11 text-[#A855F7] stroke-[1.5]" />
               </div>
               <div className="relative z-10">
-                <h3 className="text-2xl sm:text-[26px] text-[#FAFAFA] font-normal leading-tight tracking-tight">
+                <h3 className="text-2xl sm:text-[26px] text-white font-normal leading-tight tracking-tight">
                   Speaker Keynotes
                 </h3>
-                <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
+                <p className="text-xs sm:text-[13px] text-slate-300 font-light leading-relaxed mt-2.5">
                   Hear from AWS Heroes, Community Builders, and senior engineers sharing real-world cloud insights,
                   lessons, and systems.
                 </p>
@@ -774,8 +811,7 @@ export default function App() {
             </div>
 
             {/* Card 2 - Community Conversations */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#4A4E69] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-[#4A4E69] relative overflow-hidden group">
-              {/* Subtle background image */}
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0E1529]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#06B6D4]/50 relative overflow-hidden group">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
                 <img 
                   src="https://images.unsplash.com/photo-1511578314322-379afb476865?w=400&h=400&fit=crop" 
@@ -784,13 +820,13 @@ export default function App() {
                 />
               </div>
               <div className="relative z-10">
-                <Users className="w-11 h-11 text-[#C9ADA7] stroke-[1.5]" />
+                <Users className="w-11 h-11 text-[#06B6D4] stroke-[1.5]" />
               </div>
               <div className="relative z-10">
-                <h3 className="text-2xl sm:text-[26px] text-[#FAFAFA] font-normal leading-tight tracking-tight">
+                <h3 className="text-2xl sm:text-[26px] text-white font-normal leading-tight tracking-tight">
                   Community Conversations
                 </h3>
-                <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
+                <p className="text-xs sm:text-[13px] text-slate-300 font-light leading-relaxed mt-2.5">
                   Meet the local cloud community — engineers, founders, students, and hiring teams across Kolhapur and
                   beyond.
                 </p>
@@ -798,8 +834,7 @@ export default function App() {
             </div>
 
             {/* Card 3 - Technical Sessions */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#1a1a2e] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-[#1a1a2e] relative overflow-hidden group">
-              {/* Subtle background image */}
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0B1120]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#10B981]/50 relative overflow-hidden group">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
                 <img 
                   src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=400&fit=crop" 
@@ -808,21 +843,20 @@ export default function App() {
                 />
               </div>
               <div className="relative z-10">
-                <Terminal className="w-11 h-11 text-[#a2e048] stroke-[1.5]" />
+                <Terminal className="w-11 h-11 text-[#2DD4BF] stroke-[1.5]" />
               </div>
               <div className="relative z-10">
-                <h3 className="text-2xl sm:text-[26px] text-[#FAFAFA] font-normal leading-tight tracking-tight">
+                <h3 className="text-2xl sm:text-[26px] text-white font-normal leading-tight tracking-tight">
                   Technical Sessions
                 </h3>
-                <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
+                <p className="text-xs sm:text-[13px] text-slate-300 font-light leading-relaxed mt-2.5">
                   Bring your laptop. Explore cloud architecture, AI, DevOps, serverless, and leave with working code.
                 </p>
               </div>
             </div>
 
             {/* Card 4 - Career Opportunities */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#8B5A3C] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-[#8B5A3C] relative overflow-hidden group">
-              {/* Subtle background image */}
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0E1529]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#EC4899]/50 relative overflow-hidden group">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
                 <img 
                   src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=400&h=400&fit=crop" 
@@ -831,13 +865,13 @@ export default function App() {
                 />
               </div>
               <div className="relative z-10">
-                <Laptop className="w-11 h-11 text-[#FFD700] stroke-[1.5]" />
+                <Laptop className="w-11 h-11 text-[#EC4899] stroke-[1.5]" />
               </div>
               <div className="relative z-10">
-                <h3 className="text-2xl sm:text-[26px] text-[#FAFAFA] font-normal leading-tight tracking-tight">
+                <h3 className="text-2xl sm:text-[26px] text-white font-normal leading-tight tracking-tight">
                   Career Opportunities
                 </h3>
-                <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
+                <p className="text-xs sm:text-[13px] text-slate-300 font-light leading-relaxed mt-2.5">
                   Connect directly with sponsor booths and cloud teams hiring across cloud, ML, DevOps, and platform
                   roles.
                 </p>
@@ -845,8 +879,7 @@ export default function App() {
             </div>
 
             {/* Card 5 - Welcoming Community */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#2C5F2D] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-[#2C5F2D] relative overflow-hidden group">
-              {/* Subtle background image */}
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0B1120]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#8B5CF6]/50 relative overflow-hidden group">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
                 <img 
                   src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=400&fit=crop" 
@@ -855,13 +888,13 @@ export default function App() {
                 />
               </div>
               <div className="relative z-10">
-                <Sparkles className="w-11 h-11 text-[#90EE90] stroke-[1.5]" />
+                <Sparkles className="w-11 h-11 text-[#8B5CF6] stroke-[1.5]" />
               </div>
               <div className="relative z-10">
-                <h3 className="text-2xl sm:text-[26px] text-[#FAFAFA] font-normal leading-tight tracking-tight">
+                <h3 className="text-2xl sm:text-[26px] text-white font-normal leading-tight tracking-tight">
                   Welcoming Community
                 </h3>
-                <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
+                <p className="text-xs sm:text-[13px] text-slate-300 font-light leading-relaxed mt-2.5">
                   A student-friendly, community-run conference. First-timers and cloud newcomers are enthusiastically
                   welcomed at the front.
                 </p>
@@ -869,8 +902,7 @@ export default function App() {
             </div>
 
             {/* Card 6 - Swag & Giveaways */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#6A1B9A] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-[#6A1B9A] relative overflow-hidden group">
-              {/* Subtle background image */}
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0E1529]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#FDBA74]/50 relative overflow-hidden group">
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
                 <img 
                   src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=400&h=400&fit=crop" 
@@ -879,35 +911,35 @@ export default function App() {
                 />
               </div>
               <div className="relative z-10">
-                <Box className="w-11 h-11 text-[#FF9900] stroke-[1.5]" />
+                <Box className="w-11 h-11 text-[#FDBA74] stroke-[1.5]" />
               </div>
               <div className="relative z-10">
-                <h3 className="text-2xl sm:text-[26px] text-[#FAFAFA] font-normal leading-tight tracking-tight">
+                <h3 className="text-2xl sm:text-[26px] text-white font-normal leading-tight tracking-tight">
                   Swag &amp; Giveaways
                 </h3>
-                <p className="text-xs sm:text-[13px] text-white/75 font-light leading-relaxed mt-2.5">
+                <p className="text-xs sm:text-[13px] text-slate-300 font-light leading-relaxed mt-2.5">
                   Surprise drops, exclusive community badges, and official AWS merchandise throughout the entire day.
                 </p>
               </div>
             </div>
 
             {/* Terminal Card */}
-            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#1a232f] border border-[#1e293b] p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center">
+            <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#070B13] border border-white/15 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center">
               <div className="flex items-center justify-between w-full">
-                <Terminal className="w-11 h-11 text-[#C9ADA7] stroke-[1.5]" />
-                <span className="font-mono text-[11px] text-white/40 tracking-wider uppercase">
-                  kolhapur builder
+                <Terminal className="w-11 h-11 text-[#06B6D4] stroke-[1.5]" />
+                <span className="font-mono text-[11px] text-[#A855F7] tracking-wider uppercase font-semibold">
+                  AWS BUILDER
                 </span>
               </div>
               <div className="font-mono text-sm leading-relaxed space-y-1">
-                <p className="text-white/80">
-                  <span className="text-[#a2e048] font-bold">$</span> whoami
+                <p className="text-slate-300">
+                  <span className="text-[#06B6D4] font-bold">$</span> whoami
                 </p>
-                <p className="text-[#C9ADA7] font-bold text-lg">builder</p>
-                <p className="text-white/80 pt-1">
-                  <span className="text-[#a2e048] font-bold">$</span> deploy --your potential
+                <p className="text-[#EC4899] font-bold text-lg">aws-builder</p>
+                <p className="text-slate-300 pt-1">
+                  <span className="text-[#06B6D4] font-bold">$</span> deploy --your potential
                 </p>
-                <p className="text-[#38bdf8] font-medium pt-1">→ Build Once. Scale Forever.</p>
+                <p className="text-[#A855F7] font-medium pt-1">→ A year, built by builders.</p>
               </div>
             </div>
           </div>
@@ -917,20 +949,14 @@ export default function App() {
       {/* ─────────────────────────────────────────────────────────────
           SPEAKERS SECTION
       ───────────────────────────────────────────────────────────── */}
-      <section id="speakers" className="relative py-20 sm:py-24 bg-[#22223B] text-white overflow-hidden">
-        {/* Wave background decoration */}
-        <div aria-hidden="true" className="absolute inset-0 pointer-events-none opacity-5">
-          <svg className="w-full h-full" viewBox="0 0 1000 1000" fill="none">
-            <path d="M0,200 Q300,100 600,300 T1000,200" stroke="white" strokeWidth="2" />
-            <path d="M0,300 Q300,200 600,400 T1000,300" stroke="white" strokeWidth="2" />
-            <path d="M0,400 Q300,300 600,500 T1000,400" stroke="white" strokeWidth="2" />
-            <path d="M0,500 Q300,400 600,600 T1000,500" stroke="white" strokeWidth="2" />
-          </svg>
-        </div>
-
+      <section id="speakers" className="relative py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white overflow-hidden border-t border-white/10">
         <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12 sm:mb-16">
             <div>
+              <div className="flex items-center gap-2 mb-3">
+                <BuilderCross className="w-5 h-5 text-[#06B6D4]" />
+                <span className="font-mono text-xs uppercase tracking-widest text-[#A855F7] font-bold">AWS BUILDER SESSIONS</span>
+              </div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-white leading-tight">
                 Meet the Speakers
                 <br />
@@ -939,7 +965,7 @@ export default function App() {
             </div>
             <a
               href="#agenda"
-              className="inline-flex items-center gap-2 h-11 px-6 bg-[#C9ADA7] hover:bg-[#9A8C98] text-[#22223B] font-mono text-xs font-bold uppercase tracking-wider transition-colors self-start sm:self-auto"
+              className="inline-flex items-center gap-2 h-11 px-6 bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-purple-500/20 self-start sm:self-auto"
             >
               <span>VIEW ALL SESSIONS</span>
               <ArrowUpRight className="w-4 h-4" />
@@ -947,9 +973,9 @@ export default function App() {
           </div>
 
           {/* Speakers Grid: Laptop (2-col) & Mobile (Responsive Unified Card View) */}
-          <div className="grid grid-cols-1 md:grid-cols-12 border-2 border-[#2D3C4E] bg-[#22223B]">
+          <div className="grid grid-cols-1 md:grid-cols-12 border border-white/15 bg-[#0B1120] rounded-2xl overflow-hidden shadow-2xl">
             {/* Left list: 7 cols on desktop */}
-            <div className="md:col-span-7 flex flex-col md:border-r-2 border-[#2D3C4E]">
+            <div className="md:col-span-7 flex flex-col md:border-r border-white/10">
               {speakers.map((sp, idx) => {
                 const isSelected = selectedSpeakerIndex === idx;
                 if (!sp.isTba) {
@@ -957,8 +983,8 @@ export default function App() {
                     <div
                       key={sp.id}
                       onClick={() => setSelectedSpeakerIndex(idx)}
-                      className={`p-6 sm:p-8 cursor-pointer border-b-2 border-[#2D3C4E] transition-colors ${
-                        isSelected ? 'bg-[#2D3C4E]' : 'hover:bg-[#2D3C4E]/40'
+                      className={`p-6 sm:p-8 cursor-pointer border-b border-white/10 transition-colors ${
+                        isSelected ? 'bg-[#131D33] border-l-4 border-l-[#A855F7]' : 'hover:bg-white/5'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -972,33 +998,32 @@ export default function App() {
                             rel="noopener noreferrer"
                             aria-label={`${sp.name} LinkedIn`}
                             onClick={e => e.stopPropagation()}
-                            className="p-1.5 text-white/70 hover:text-[#D1E5CD] transition-colors"
+                            className="p-1.5 text-white/70 hover:text-[#06B6D4] transition-colors"
                           >
                             <Linkedin className="w-5 h-5 fill-current" />
                           </a>
                         )}
                       </div>
-                      <p className="font-mono text-xs uppercase tracking-wider text-[#D1E5CD] mt-2">
-                        Manager, Community Groups <span className="text-[#a2e048] font-bold">@Amazon</span>
+                      <p className="font-mono text-xs uppercase tracking-wider text-[#C084FC] mt-2">
+                        Manager, Community Groups <span className="text-[#06B6D4] font-bold">@Amazon</span>
                       </p>
-                      <p className="text-xs sm:text-sm text-white/75 mt-1 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
                         {sp.talk}
                       </p>
 
                       {/* Mobile inline preview if on small screen */}
-                      <div className="mt-4 md:hidden rounded-lg overflow-hidden border border-[#2D3C4E] bg-[#1a232f]">
+                      <div className="mt-4 md:hidden rounded-lg overflow-hidden border border-white/10 bg-[#070B13]">
                         <div className="relative aspect-[4/3] w-full">
                           <img
                             src={sp.image}
                             alt={sp.name}
                             className="w-full h-full object-cover object-top"
                             onError={(e) => {
-                              // If remote image fails, show stylish fallback
                               (e.target as HTMLElement).style.display = 'none';
                             }}
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#1a232f] via-transparent to-transparent" />
-                          <div className="absolute top-3 left-3 bg-[#D1E5CD] text-[#22223B] font-mono text-[10px] font-bold uppercase px-2.5 py-1">
+                          <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-transparent to-transparent" />
+                          <div className="absolute top-3 left-3 bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white font-mono text-[10px] font-bold uppercase px-2.5 py-1 rounded-sm">
                             {sp.badge}
                           </div>
                         </div>
@@ -1012,15 +1037,15 @@ export default function App() {
                   <div
                     key={sp.id}
                     onClick={() => setSelectedSpeakerIndex(idx)}
-                    className={`p-6 sm:p-8 cursor-pointer border-b-2 last:border-b-0 border-[#2D3C4E] transition-colors flex items-center justify-between ${
-                      isSelected ? 'bg-[#2D3C4E]/70' : 'hover:bg-[#2D3C4E]/40'
+                    className={`p-6 sm:p-8 cursor-pointer border-b last:border-b-0 border-white/10 transition-colors flex items-center justify-between ${
+                      isSelected ? 'bg-[#131D33]/70' : 'hover:bg-white/5'
                     }`}
                   >
                     <div className="flex flex-col gap-2 w-full max-w-xs">
-                      <div className="h-5 bg-[#29384A]/60 w-44 sm:w-56 rounded-none animate-shimmer" />
-                      <div className="h-3.5 bg-[#29384A]/40 w-28 sm:w-36 rounded-none" />
+                      <div className="h-5 bg-white/10 w-44 sm:w-56 rounded-none animate-shimmer" />
+                      <div className="h-3.5 bg-white/5 w-28 sm:w-36 rounded-none" />
                     </div>
-                    <span className="font-mono text-[10px] sm:text-xs text-[#5A6C86] uppercase tracking-wider font-semibold">
+                    <span className="font-mono text-[10px] sm:text-xs text-slate-400 uppercase tracking-wider font-semibold">
                       To Be Announced
                     </span>
                   </div>
@@ -1028,8 +1053,8 @@ export default function App() {
               })}
             </div>
 
-            {/* Right Photo Panel: 5 cols on desktop (Visible on desktop/laptop) */}
-            <div className="hidden md:flex md:col-span-5 relative bg-[#1a232f] min-h-[540px] flex-col justify-end overflow-hidden">
+            {/* Right Photo Panel: 5 cols on desktop */}
+            <div className="hidden md:flex md:col-span-5 relative bg-[#070B13] min-h-[540px] flex-col justify-end overflow-hidden">
               {activeSpeaker.image ? (
                 <>
                   <img
@@ -1040,19 +1065,19 @@ export default function App() {
                       (e.target as HTMLElement).style.display = 'none';
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#22223B] via-[#22223B]/40 to-transparent opacity-90" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B1120] via-[#0B1120]/60 to-transparent opacity-95" />
                 </>
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a232f] text-white/30 font-mono text-sm uppercase">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#070B13] text-white/30 font-mono text-sm uppercase">
                   <AwsLogo className="h-14 w-auto opacity-20 mb-3" dark />
                   <span>Announcement Pending</span>
                 </div>
               )}
 
               {/* Panel Info Overlay */}
-              <div className="relative z-10 p-7 w-full bg-gradient-to-t from-[#22223B] via-[#22223B]/90 to-transparent">
+              <div className="relative z-10 p-7 w-full bg-gradient-to-t from-[#0B1120] via-[#0B1120]/90 to-transparent">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-[10px] uppercase tracking-widest font-bold bg-[#D1E5CD] text-[#22223B] px-2.5 py-1">
+                  <span className="font-mono text-[10px] uppercase tracking-widest font-bold bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white px-2.5 py-1 rounded-sm shadow-sm">
                     {activeSpeaker.badge || 'Speaker TBA'}
                   </span>
                   {activeSpeaker.linkedin && (
@@ -1060,7 +1085,7 @@ export default function App() {
                       href={activeSpeaker.linkedin}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 bg-[#22223B]/90 border border-[#D1E5CD]/40 text-white hover:bg-[#D1E5CD] hover:text-[#22223B] px-3 py-1 font-mono text-[11px] font-semibold transition-colors"
+                      className="inline-flex items-center gap-1.5 bg-white/10 border border-white/20 text-white hover:border-[#06B6D4] hover:text-[#06B6D4] px-3 py-1 font-mono text-[11px] font-semibold transition-colors"
                     >
                       <Linkedin className="w-3.5 h-3.5 fill-current" />
                       <span>LinkedIn</span>
@@ -1068,8 +1093,8 @@ export default function App() {
                   )}
                 </div>
                 <p className="text-2xl font-bold text-white tracking-tight">{activeSpeaker.name}</p>
-                <p className="font-mono text-xs text-[#C9ADA7] mt-0.5">{activeSpeaker.role}</p>
-                <p className="text-xs text-white/80 mt-2 leading-relaxed">{activeSpeaker.talk}</p>
+                <p className="font-mono text-xs text-[#06B6D4] mt-0.5">{activeSpeaker.role}</p>
+                <p className="text-xs text-slate-300 mt-2 leading-relaxed">{activeSpeaker.talk}</p>
               </div>
             </div>
           </div>
@@ -1079,43 +1104,50 @@ export default function App() {
       {/* ─────────────────────────────────────────────────────────────
           TICKETS SECTION
       ───────────────────────────────────────────────────────────── */}
-      <section id="tickets" className="py-20 sm:py-24 bg-[#F2E9E4] text-[#22223B]">
+      {/* ─────────────────────────────────────────────────────────────
+          TICKETS SECTION (AWS BUILDER CENTER PASSES)
+      ───────────────────────────────────────────────────────────── */}
+      <section id="tickets" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white border-t border-white/10">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
           <div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight text-[#22223B]">
+            <div className="flex items-center gap-2 mb-3">
+              <BuilderCross className="w-5 h-5 text-[#A855F7]" />
+              <span className="font-mono text-xs uppercase tracking-widest text-[#06B6D4] font-bold">PASS REGISTRATION</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight text-white">
               Tickets for every builder
             </h2>
-            <p className="mt-3 text-base sm:text-lg md:text-xl text-[#22223B]/90 font-light">
+            <p className="mt-3 text-base sm:text-lg md:text-xl text-slate-300 font-light">
               Join AWS Student Community Day Kolhapur 2026 with access to talks, workshops, and community experiences.
             </p>
           </div>
 
-          {ticketsLoading && <p role="status" className="mt-6 text-sm text-[#64748b]">Checking ticket prices and availability…</p>}
-          {ticketsError && (
-            <p role="alert" className="mt-6 border border-red-700/20 bg-white px-4 py-3 text-sm text-red-800">
-              Ticket sales are temporarily unavailable: {ticketsError}
-            </p>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 mt-10 sm:mt-12">
             {/* Super Early Bird */}
-            <div className="bg-[#22223B] text-white p-6 sm:p-8 flex flex-col justify-between rounded-none shadow-lg border border-[#22223B] transition-transform hover:-translate-y-1">
+            <div className={`bg-[#0B1120]/95 text-white p-6 sm:p-8 flex flex-col justify-between rounded-2xl shadow-xl transition-all hover:border-[#A855F7]/40 relative ${
+              superEarlyEffective.isOpen ? 'border-2 border-[#A855F7] shadow-2xl' : 'border border-white/10'
+            }`}>
+              {ticketConfig.tiers.super_early_bird.highlightBadge && superEarlyEffective.isOpen && (
+                <div className="absolute -top-3.5 right-6 bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white font-mono text-[11px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider shadow-lg">
+                  {ticketConfig.tiers.super_early_bird.highlightBadge}
+                </div>
+              )}
               <div>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-white">Super Early Bird Tickets</h3>
-                    <p className="text-xs text-white/65 mt-1 font-mono">Be Super, Be Early!</p>
+                    <h3 className="text-lg font-medium text-white">{ticketConfig.tiers.super_early_bird.label}</h3>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">{ticketConfig.tiers.super_early_bird.tagline}</p>
                   </div>
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-normal text-white">₹149</span>
-                  <p className="font-mono text-[11px] text-white/60 mt-2 leading-relaxed">
-                    Available Till: 17th Sep 2026, 06:36 PM (GMT+05:30)
+                  <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.super_early_bird.price}</span>
+                  <p className="font-mono text-[11px] text-[#06B6D4] mt-2 leading-relaxed">
+                    {ticketConfig.tiers.super_early_bird.dateDescription || 'Available Till: 17th Sep 2026, 06:36 PM (GMT+05:30)'}
                   </p>
                 </div>
 
-                <ul className="mt-6 space-y-3 font-normal text-xs text-white/85 leading-relaxed">
+                <ul className="mt-6 space-y-3 font-normal text-xs text-slate-300 leading-relaxed">
                   {[
                     'Full access to the entire AWS Student Community Day Kolhapur 2026 on 1st November 2026',
                     'Exclusive event Swags & Goodies',
@@ -1127,7 +1159,7 @@ export default function App() {
                     'Digital Certificate of Participation from AWS.'
                   ].map((feat, i) => (
                     <li key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                      <Check className="w-4 h-4 text-[#06B6D4] flex-shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
@@ -1136,41 +1168,47 @@ export default function App() {
 
               <div className="mt-8 pt-4 border-t border-white/10">
                 <button
-                  disabled
-                  className="w-full h-11 bg-[#7B9285] text-[#22223B] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center cursor-not-allowed opacity-90"
+                  type="button"
+                  disabled={!superEarlyEffective.isOpen}
+                  onClick={() => openTicketCheckout('super_early_bird')}
+                  className={`w-full h-11 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-all rounded-lg shadow-md ${
+                    superEarlyEffective.isOpen
+                      ? 'bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white shadow-purple-500/20 cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-80'
+                  }`}
                 >
-                  SOLD OUT
+                  {superEarlyEffective.buttonLabel}
                 </button>
               </div>
             </div>
 
             {/* Early Bird (Active) */}
-            <div className="bg-[#22223B] text-white p-6 sm:p-8 flex flex-col justify-between rounded-none shadow-xl border-2 border-[#C9ADA7] relative transition-transform hover:-translate-y-1">
+            <div className={`bg-[#0E1529]/95 text-white p-6 sm:p-8 flex flex-col justify-between rounded-2xl shadow-2xl relative transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.2)] ${
+              earlyBirdEffective.isOpen ? 'border-2 border-[#A855F7]' : 'border border-white/10'
+            }`}>
               {/* Highlight badge */}
-              <div className="absolute -top-3.5 right-6 bg-[#CDE3CB] text-[#22223B] font-mono text-[11px] font-extrabold uppercase px-3 py-0.5 tracking-wider shadow-sm">
-                Avail Off
-              </div>
+              {earlyBirdEffective.isOpen && (
+                <div className="absolute -top-3.5 right-6 bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white font-mono text-[11px] font-extrabold uppercase px-3.5 py-1 rounded-full tracking-wider shadow-lg">
+                  {ticketConfig.tiers.early_bird.highlightBadge || 'Popular Choice'}
+                </div>
+              )}
 
               <div>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-white">Early Bird Ticket</h3>
-                    <p className="text-xs text-white/65 mt-1 font-mono">Early Bird, Be Quick!</p>
+                    <h3 className="text-lg font-medium text-white">{ticketConfig.tiers.early_bird.label}</h3>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">{ticketConfig.tiers.early_bird.tagline}</p>
                   </div>
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-normal text-white">{formatTicketPrice(earlyBirdTicket)}</span>
-                  <p className="font-mono text-[11px] text-white/60 mt-2 leading-relaxed">
-                    {earlyBirdTicket?.endsAt
-                      ? `Available until: ${formatTicketDate(earlyBirdTicket.endsAt)} IST`
-                      : earlyBirdTicket?.available
-                        ? 'On sale now'
-                        : 'Sale dates and availability are managed by the event team'}
+                  <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.early_bird.price}</span>
+                  <p className="font-mono text-[11px] text-[#06B6D4] mt-2 leading-relaxed">
+                    {ticketConfig.tiers.early_bird.dateDescription || 'Available until: 22nd Oct 2026, 05:54 PM IST'}
                   </p>
                 </div>
 
-                <ul className="mt-6 space-y-3 font-normal text-xs text-white/85 leading-relaxed">
+                <ul className="mt-6 space-y-3 font-normal text-xs text-slate-300 leading-relaxed">
                   {[
                     'Full access to the entire AWS Student Community Day Kolhapur 2026 on 1st November 2026',
                     'Exclusive event Swags & Goodies',
@@ -1182,7 +1220,7 @@ export default function App() {
                     'Digital Certificate of Participation from AWS.'
                   ].map((feat, i) => (
                     <li key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                      <Check className="w-4 h-4 text-[#06B6D4] flex-shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
@@ -1190,34 +1228,46 @@ export default function App() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-white/10">
-                <TicketCheckoutButton
-                  ticket={earlyBirdTicket}
-                  loading={ticketsLoading}
+                <button
+                  type="button"
+                  disabled={!earlyBirdEffective.isOpen}
                   onClick={() => openTicketCheckout('early_bird')}
-                />
+                  className={`w-full h-11 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-all rounded-lg shadow-lg ${
+                    earlyBirdEffective.isOpen
+                      ? 'bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white shadow-purple-500/25 cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-80'
+                  }`}
+                >
+                  {earlyBirdEffective.buttonLabel}
+                </button>
               </div>
             </div>
 
             {/* Regular */}
-            <div className="bg-[#22223B] text-white p-6 sm:p-8 flex flex-col justify-between rounded-none shadow-lg border border-[#22223B] transition-transform hover:-translate-y-1">
+            <div className={`bg-[#0B1120]/95 text-white p-6 sm:p-8 flex flex-col justify-between rounded-2xl shadow-xl transition-all hover:border-[#A855F7]/40 relative ${
+              regularEffective.isOpen ? 'border-2 border-[#A855F7] shadow-2xl' : 'border border-white/10'
+            }`}>
+              {ticketConfig.tiers.regular.highlightBadge && regularEffective.isOpen && (
+                <div className="absolute -top-3.5 right-6 bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white font-mono text-[11px] font-extrabold uppercase px-3 py-1 rounded-full tracking-wider shadow-lg">
+                  {ticketConfig.tiers.regular.highlightBadge}
+                </div>
+              )}
               <div>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-medium text-white">Regular</h3>
-                    <p className="text-xs text-white/65 mt-1 font-mono">Early Bird, Be Quick!</p>
+                    <h3 className="text-lg font-medium text-white">{ticketConfig.tiers.regular.label}</h3>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">{ticketConfig.tiers.regular.tagline}</p>
                   </div>
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-normal text-white">{formatTicketPrice(regularTicket)}</span>
-                  <p className="font-mono text-[11px] text-white/60 mt-2 leading-relaxed">
-                    {regularTicket?.startsAt
-                      ? `Available from: ${formatTicketDate(regularTicket.startsAt)} IST`
-                      : 'Sale dates and availability are managed by the event team'}
+                  <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.regular.price}</span>
+                  <p className="font-mono text-[11px] text-[#06B6D4] mt-2 leading-relaxed">
+                    {ticketConfig.tiers.regular.dateDescription || 'Available from: 22nd Oct 2026, 05:54 PM IST'}
                   </p>
                 </div>
 
-                <ul className="mt-6 space-y-3 font-normal text-xs text-white/85 leading-relaxed">
+                <ul className="mt-6 space-y-3 font-normal text-xs text-slate-300 leading-relaxed">
                   {[
                     'Full access to the entire AWS Student Community Day Kolhapur 2026 on 1st November 2026',
                     'Exclusive event Swags & Goodies',
@@ -1229,7 +1279,7 @@ export default function App() {
                     'Digital Certificate of Participation from AWS.'
                   ].map((feat, i) => (
                     <li key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                      <Check className="w-4 h-4 text-[#06B6D4] flex-shrink-0 mt-0.5" />
                       <span>{feat}</span>
                     </li>
                   ))}
@@ -1237,11 +1287,18 @@ export default function App() {
               </div>
 
               <div className="mt-8 pt-4 border-t border-white/10">
-                <TicketCheckoutButton
-                  ticket={regularTicket}
-                  loading={ticketsLoading}
+                <button
+                  type="button"
+                  disabled={!regularEffective.isOpen}
                   onClick={() => openTicketCheckout('regular')}
-                />
+                  className={`w-full h-11 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center transition-all rounded-lg shadow-md ${
+                    regularEffective.isOpen
+                      ? 'bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white shadow-purple-500/20 cursor-pointer'
+                      : 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-80'
+                  }`}
+                >
+                  {regularEffective.buttonLabel}
+                </button>
               </div>
             </div>
           </div>
@@ -1258,35 +1315,49 @@ export default function App() {
       {/* ─────────────────────────────────────────────────────────────
           WORKSHOPS CTA BANNER
       ───────────────────────────────────────────────────────────── */}
-      <section className="bg-[#22223B] py-14 sm:py-16 text-white border-y border-[#4A4E69]/40">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 text-center sm:text-left">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
-            Build real projects in <span className="text-[#C9ADA7]">hands-on sessions.</span>
-          </h2>
-          <p className="mt-4 text-sm sm:text-base md:text-lg text-white/75 max-w-2xl leading-relaxed">
-            Bring your laptop and code side-by-side with AWS experts. Walk away with working cloud projects.
-          </p>
+      <section className="bg-[#0B1120] py-14 sm:py-16 text-white border-y border-white/10">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 text-center sm:text-left flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <BuilderBannerStrip className="mb-4" />
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
+              Build real projects in <span className="bg-gradient-to-r from-[#A855F7] via-[#EC4899] to-[#06B6D4] bg-clip-text text-transparent">hands-on sessions.</span>
+            </h2>
+            <p className="mt-4 text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl leading-relaxed">
+              Bring your laptop and code side-by-side with AWS experts. Walk away with working cloud projects.
+            </p>
+          </div>
+          <a
+            href="#tickets"
+            className="inline-flex items-center justify-center gap-2 h-12 px-8 bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white font-mono text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg shadow-purple-500/25 self-start md:self-auto"
+          >
+            <span>JOIN AS BUILDER</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </a>
         </div>
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          SPONSORS SECTION
+          SPONSORS SECTION (AWS BUILDER PARTNERS)
       ───────────────────────────────────────────────────────────── */}
-      <section id="sponsors" className="py-20 sm:py-24 bg-white text-[#22223B]">
+      <section id="sponsors" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white border-t border-white/10">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-[#22223B]">
+              <div className="flex items-center gap-2 mb-3">
+                <BuilderCross className="w-5 h-5 text-[#EC4899]" />
+                <span className="font-mono text-xs uppercase tracking-widest text-[#06B6D4] font-bold">ECOSYSTEM &amp; SPONSORS</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-white">
                 Sponsors
               </h2>
-              <p className="mt-3 text-sm sm:text-base text-[#9A8C98] font-medium max-w-xl leading-relaxed">
+              <p className="mt-3 text-sm sm:text-base text-slate-400 font-normal max-w-xl leading-relaxed">
                 Backed by organizations helping shape cloud, developer, and technology communities. Previous editions
                 have been supported by ecosystem partners committed to learning, innovation, and community growth.
               </p>
             </div>
             <a
               href="mailto:aws@vvce.ac.in"
-              className="inline-flex items-center gap-2 h-11 px-6 bg-[#22223B] hover:bg-[#1a232f] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors self-start md:self-auto"
+              className="inline-flex items-center gap-2 h-11 px-6 bg-gradient-to-r from-[#A855F7] to-[#EC4899] hover:opacity-95 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all rounded-lg shadow-md shadow-purple-500/20 self-start md:self-auto"
             >
               <span>PARTNER WITH US</span>
               <ArrowUpRight className="w-4 h-4" />
@@ -1295,25 +1366,25 @@ export default function App() {
 
           {/* Title Sponsor */}
           <div className="mb-10">
-            <p className="font-mono text-xs uppercase tracking-wider text-[#C9ADA7] font-bold mb-4">
+            <p className="font-mono text-xs uppercase tracking-wider text-[#A855F7] font-bold mb-4">
               TITLE SPONSOR
             </p>
-            <div className="border border-[#22223B]/15 h-32 sm:h-36 flex items-center justify-center p-6 bg-white hover:border-[#22223B]/30 transition-colors">
-              <AwsLogo className="h-14 sm:h-16 w-auto" />
+            <div className="border border-white/15 h-32 sm:h-36 flex items-center justify-center p-6 bg-[#0B1120]/95 hover:border-[#A855F7]/50 rounded-xl transition-all shadow-xl">
+              <AwsLogo className="h-14 sm:h-16 w-auto" dark />
             </div>
           </div>
 
           {/* Venue Sponsor */}
           <div className="mb-10">
-            <p className="font-mono text-xs uppercase tracking-wider text-[#C9ADA7] font-bold mb-4">
+            <p className="font-mono text-xs uppercase tracking-wider text-[#06B6D4] font-bold mb-4">
               VENUE SPONSOR
             </p>
-            <div className="border border-[#22223B]/15 h-32 sm:h-36 flex items-center justify-center p-6 bg-white hover:border-[#22223B]/30 transition-colors">
+            <div className="border border-white/15 h-32 sm:h-36 flex items-center justify-center p-6 bg-[#0B1120]/95 hover:border-[#06B6D4]/50 rounded-xl transition-all shadow-xl">
               <div className="flex items-center gap-4">
-                <GraduationCap className="w-12 h-12 text-[#22223B]" />
+                <GraduationCap className="w-12 h-12 text-[#06B6D4]" />
                 <div className="text-left">
-                  <p className="font-bold text-xl sm:text-2xl text-[#22223B] tracking-tight">GCOEK</p>
-                  <p className="text-xs text-[#64748b]">Government College of Engineering, Kolhapur</p>
+                  <p className="font-bold text-xl sm:text-2xl text-white tracking-tight">GCOEK</p>
+                  <p className="text-xs text-slate-400">Government College of Engineering, Kolhapur</p>
                 </div>
               </div>
             </div>
@@ -1321,34 +1392,34 @@ export default function App() {
 
           {/* Event & Ticketing Partner */}
           <div className="mb-10">
-            <p className="font-mono text-xs uppercase tracking-wider text-[#C9ADA7] font-bold mb-4">
+            <p className="font-mono text-xs uppercase tracking-wider text-[#EC4899] font-bold mb-4">
               EVENT PARTNER — TICKETING PARTNER
             </p>
-            <div className="border border-[#22223B]/15 h-28 sm:h-32 flex items-center justify-center p-6 bg-white hover:border-[#22223B]/30 transition-colors">
-              <span className="font-mono text-2xl sm:text-3xl font-bold tracking-tight text-[#1a3a8f]">
-                ❮ KONFHUB ❯
+            <div className="border border-white/15 h-28 sm:h-32 flex items-center justify-center p-6 bg-[#0B1120]/95 hover:border-[#EC4899]/50 rounded-xl transition-all shadow-xl">
+              <span className="font-mono text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-2">
+                <span className="text-[#A855F7]">❮</span> KONFHUB <span className="text-[#EC4899]">❯</span>
               </span>
             </div>
           </div>
 
           {/* Community Partners */}
           <div>
-            <p className="font-mono text-xs uppercase tracking-wider text-[#C9ADA7] font-bold mb-4">
+            <p className="font-mono text-xs uppercase tracking-wider text-[#06B6D4] font-bold mb-4">
               COMMUNITY PARTNER
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="border border-[#22223B]/15 h-24 sm:h-28 flex items-center justify-center p-4 bg-white hover:border-[#22223B]/30 transition-colors text-center">
-                <p className="font-semibold text-sm sm:text-base text-[#22223B]">
+              <div className="border border-white/15 h-24 sm:h-28 flex items-center justify-center p-4 bg-[#0B1120]/95 hover:border-[#06B6D4]/50 rounded-xl transition-all text-center">
+                <p className="font-semibold text-sm sm:text-base text-white">
                   AWS User Groups Mysore
                 </p>
               </div>
-              <div className="border border-[#22223B]/15 h-24 sm:h-28 flex items-center justify-center p-4 bg-white hover:border-[#22223B]/30 transition-colors text-center">
-                <p className="font-semibold text-sm sm:text-base text-[#22223B]">
+              <div className="border border-white/15 h-24 sm:h-28 flex items-center justify-center p-4 bg-[#0B1120]/95 hover:border-[#A855F7]/50 rounded-xl transition-all text-center">
+                <p className="font-semibold text-sm sm:text-base text-white">
                   Cloud Native Community Mysore
                 </p>
               </div>
-              <div className="border border-[#22223B]/15 h-24 sm:h-28 flex items-center justify-center p-4 bg-white hover:border-[#22223B]/30 transition-colors text-center">
-                <p className="font-semibold text-sm sm:text-base text-[#22223B]">
+              <div className="border border-white/15 h-24 sm:h-28 flex items-center justify-center p-4 bg-[#0B1120]/95 hover:border-[#EC4899]/50 rounded-xl transition-all text-center">
+                <p className="font-semibold text-sm sm:text-base text-white">
                   AWS User Group Bengaluru
                 </p>
               </div>
@@ -1358,27 +1429,31 @@ export default function App() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          WORKSHOPS SECTION
+          WORKSHOPS SECTION (AWS BUILDER LABS)
       ───────────────────────────────────────────────────────────── */}
-      <section id="workshops" className="py-20 sm:py-24 bg-[#F2E9E4] text-[#22223B]">
+      <section id="workshops" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white border-t border-white/10">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
           <div className="mb-12">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-[#22223B]">
+            <div className="flex items-center gap-2 mb-3">
+              <BuilderCross className="w-5 h-5 text-[#06B6D4]" />
+              <span className="font-mono text-xs uppercase tracking-widest text-[#A855F7] font-bold">AWS HANDS-ON LABS</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-white">
               Workshops
             </h2>
-            <p className="mt-3 text-sm sm:text-base text-[#22223B]/80 max-w-xl">
+            <p className="mt-3 text-sm sm:text-base text-slate-400 max-w-xl">
               Hands-on, skill-building workshops designed to get you building on AWS from day one.
             </p>
           </div>
 
           <div className="flex flex-col gap-8 max-w-4xl mx-auto pb-[30vh]">
             {/* Workshop 1 */}
-            <div className="sticky top-24 sm:top-28 z-10 bg-[#22223B] border border-[#C9ADA7]/30 rounded-2xl p-6 sm:p-10 shadow-xl transition-shadow text-white">
+            <div className="sticky top-24 sm:top-28 z-10 bg-[#0B1120] border border-[#A855F7]/40 rounded-2xl p-6 sm:p-10 shadow-2xl transition-all text-white hover:shadow-[0_0_30px_rgba(168,85,247,0.2)]">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-[#C9ADA7] text-[#22223B] px-2.5 py-1">
+                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white px-3 py-1 rounded-sm shadow-sm">
                   GENAI &amp; LLMS
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-white/70 font-mono">
+                <span className="flex items-center gap-1.5 text-xs text-[#06B6D4] font-mono">
                   <Clock className="w-3.5 h-3.5" />
                   <span>2.5 Hours</span>
                 </span>
@@ -1387,22 +1462,22 @@ export default function App() {
               <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight leading-snug">
                 Building Generative AI Applications with Amazon Bedrock
               </h3>
-              <p className="mt-3 text-xs sm:text-sm text-white/80 font-medium leading-relaxed">
+              <p className="mt-3 text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
                 Step-by-step hands-on guide to building multi-agent RAG (Retrieval-Augmented Generation) applications
                 using Claude 3, Bedrock Knowledge Bases, and LangChain.
               </p>
 
               <div className="my-5 h-px bg-white/10" />
 
-              <div className="space-y-2 text-xs sm:text-sm text-white/90">
+              <div className="space-y-2 text-xs sm:text-sm text-slate-300">
                 <p className="flex items-start gap-2">
-                  <Laptop className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                  <Laptop className="w-4 h-4 text-[#A855F7] flex-shrink-0 mt-0.5" />
                   <span>
                     <strong>Requirements:</strong> Laptop with AWS Account / CLI configured
                   </span>
                 </p>
                 <p className="flex items-start gap-2">
-                  <Terminal className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                  <Terminal className="w-4 h-4 text-[#06B6D4] flex-shrink-0 mt-0.5" />
                   <span>
                     <strong>Instructor:</strong> AWS GenAI Community Leads
                   </span>
@@ -1410,12 +1485,12 @@ export default function App() {
               </div>
 
               <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
-                <span className="font-mono text-xs text-white/70 uppercase tracking-wider font-semibold">
+                <span className="font-mono text-xs text-[#A855F7] uppercase tracking-wider font-semibold">
                   LEVEL: INTERMEDIATE
                 </span>
                 <a
                   href="#tickets"
-                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#C9ADA7] hover:bg-white text-[#22223B] font-mono text-[11px] font-bold uppercase tracking-wider transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-gradient-to-r from-[#A855F7] via-[#C084FC] to-[#EC4899] hover:opacity-95 text-white font-mono text-[11px] font-bold uppercase tracking-wider rounded-lg shadow-md transition-all"
                 >
                   <span>RESERVE SEAT</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1424,12 +1499,12 @@ export default function App() {
             </div>
 
             {/* Workshop 2 */}
-            <div className="sticky top-28 sm:top-32 z-20 bg-[#4A4E69] border border-[#C9ADA7]/30 rounded-2xl p-6 sm:p-10 shadow-2xl transition-shadow text-white">
+            <div className="sticky top-28 sm:top-32 z-20 bg-[#0E1529] border border-[#06B6D4]/40 rounded-2xl p-6 sm:p-10 shadow-2xl transition-all text-white hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-[#22223B] text-white px-2.5 py-1">
+                <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider bg-gradient-to-r from-[#06B6D4] to-[#10B981] text-black px-3 py-1 rounded-sm shadow-sm">
                   CLOUD &amp; CONTAINERS
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-white/70 font-mono">
+                <span className="flex items-center gap-1.5 text-xs text-[#06B6D4] font-mono">
                   <Clock className="w-3.5 h-3.5" />
                   <span>2 Hours</span>
                 </span>
@@ -1438,22 +1513,22 @@ export default function App() {
               <h3 className="text-xl sm:text-2xl font-semibold text-white tracking-tight leading-snug">
                 Kubernetes on AWS: Deploying &amp; Scaling Elastic Microservices
               </h3>
-              <p className="mt-3 text-xs sm:text-sm text-white/80 font-medium leading-relaxed">
+              <p className="mt-3 text-xs sm:text-sm text-slate-300 font-normal leading-relaxed">
                 Set up an Amazon EKS cluster, configure Helm charts, deploy microservices, and configure autoscaling
                 with Karpenter and Prometheus monitoring.
               </p>
 
               <div className="my-5 h-px bg-white/10" />
 
-              <div className="space-y-2 text-xs sm:text-sm text-white/90">
+              <div className="space-y-2 text-xs sm:text-sm text-slate-300">
                 <p className="flex items-start gap-2">
-                  <Laptop className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                  <Laptop className="w-4 h-4 text-[#06B6D4] flex-shrink-0 mt-0.5" />
                   <span>
                     <strong>Requirements:</strong> Docker basics &amp; basic Terminal experience
                   </span>
                 </p>
                 <p className="flex items-start gap-2">
-                  <Terminal className="w-4 h-4 text-[#C9ADA7] flex-shrink-0 mt-0.5" />
+                  <Terminal className="w-4 h-4 text-[#2DD4BF] flex-shrink-0 mt-0.5" />
                   <span>
                     <strong>Instructor:</strong> Container Solutions Engineers
                   </span>
@@ -1461,12 +1536,12 @@ export default function App() {
               </div>
 
               <div className="mt-6 pt-5 border-t border-white/10 flex items-center justify-between">
-                <span className="font-mono text-xs text-white/70 uppercase tracking-wider font-semibold">
+                <span className="font-mono text-xs text-[#06B6D4] uppercase tracking-wider font-semibold">
                   LEVEL: ADVANCED
                 </span>
                 <a
                   href="#tickets"
-                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-[#22223B] hover:bg-[#1a1a2f] text-white font-mono text-[11px] font-bold uppercase tracking-wider transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-4 bg-gradient-to-r from-[#06B6D4] to-[#10B981] hover:opacity-95 text-black font-mono text-[11px] font-bold uppercase tracking-wider rounded-lg shadow-md transition-all"
                 >
                   <span>RESERVE SEAT</span>
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -1478,57 +1553,88 @@ export default function App() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          SCHEDULE / AGENDA SECTION
+          SCHEDULE / AGENDA SECTION (AWS BUILDER CENTER THEME)
       ───────────────────────────────────────────────────────────── */}
-      <section id="agenda" className="py-20 sm:py-24 bg-[#FFFFFF] text-[#22223B] border-t border-[#22223B]/15">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+      <section id="agenda" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white border-t border-white/10 relative overflow-hidden">
+        {/* Subtle glow effect */}
+        <div className="absolute top-1/2 left-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
             {/* Left Column */}
             <div className="lg:col-span-5 flex flex-col justify-start">
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-[#22223B] leading-tight">
+              <div className="flex items-center gap-2 mb-4">
+                <BuilderCross size={18} />
+                <span className="font-mono text-xs text-purple-400 uppercase tracking-widest font-semibold">
+                  [ 04 // TIMELINE ]
+                </span>
+              </div>
+
+              <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-tight">
                 Featured
                 <br />
-                Sessions
+                <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                  Sessions
+                </span>
               </h2>
-              <p className="mt-4 text-sm sm:text-base text-[#4A4E69] font-medium leading-relaxed max-w-sm">
+
+              <p className="mt-4 text-sm sm:text-base text-slate-300 font-normal leading-relaxed max-w-sm">
                 A full day of keynotes, technical deep dives, hands-on knowledge, and community conversations designed
                 for builders at every stage.
               </p>
-              <div className="mt-8">
+
+              <div className="mt-8 flex flex-wrap items-center gap-4">
                 <a
                   href="#speakers"
-                  className="inline-flex items-center gap-2 h-11 px-6 bg-[#22223B] hover:bg-[#4A4E69] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                  className="inline-flex items-center gap-2 h-11 px-6 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-purple-600/25"
                 >
-                  <span>FULL SCHEDULE</span>
+                  <span>EXPLORE SESSIONS</span>
                   <ArrowUpRight className="w-4 h-4" />
                 </a>
+                <BuilderGroupPill text="AWS Student Builder Group" />
               </div>
             </div>
 
             {/* Right Column: Timeline list */}
-            <div className="lg:col-span-7 flex flex-col divide-y divide-[#22223B]/20">
+            <div className="lg:col-span-7 flex flex-col divide-y divide-white/10 bg-[#0B1120]/80 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
               {[
-                { title: 'Check-in & Registrations', time: '8:00am – 9:00am', isBreak: false },
-                { title: 'Opening Ceremony', time: '9:00am – 9:30am', isBreak: false },
-                { title: 'Keynote', time: '9:30am – 11:00am', isBreak: false },
-                { title: 'TEA BREAK', time: '11:00am – 11:30am', isBreak: true },
-                { title: 'Session 1', time: '11:30am – 1:30pm', isBreak: false },
-                { title: 'LUNCH BREAK', time: '1:30pm – 2:30pm', isBreak: true },
-                { title: 'Session 2', time: '2:30pm – 4:30pm', isBreak: false },
-                { title: 'BREAK', time: '4:30pm – 5:00pm', isBreak: true },
-                { title: 'Panel Discussion', time: '5:00pm – 5:30pm', isBreak: false }
+                { title: 'Check-in & Registrations', time: '8:00am – 9:00am', isBreak: false, badge: 'GATE OPEN' },
+                { title: 'Opening Ceremony', time: '9:00am – 9:30am', isBreak: false, badge: 'COMMUNITY' },
+                { title: 'Keynote Address', time: '9:30am – 11:00am', isBreak: false, badge: 'KEYNOTE' },
+                { title: 'TEA & NETWORKING BREAK', time: '11:00am – 11:30am', isBreak: true, badge: 'REFRESH' },
+                { title: 'Session 1: Cloud Architecture Deep-Dive', time: '11:30am – 1:30pm', isBreak: false, badge: 'TECH TALK' },
+                { title: 'LUNCH & BUILDER EXPO', time: '1:30pm – 2:30pm', isBreak: true, badge: 'LUNCH' },
+                { title: 'Session 2: Hands-on Generative AI on AWS', time: '2:30pm – 4:30pm', isBreak: false, badge: 'AI & ML' },
+                { title: 'EVENING COFFEE BREAK', time: '4:30pm – 5:00pm', isBreak: true, badge: 'REFRESH' },
+                { title: 'Panel Discussion & Swag Distribution', time: '5:00pm – 5:30pm', isBreak: false, badge: 'PANEL' }
               ].map((item, i) => (
-                <div key={i} className="py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <h3
-                    className={`text-xl sm:text-2xl md:text-3xl tracking-tight ${
-                      item.isBreak
-                        ? 'font-bold uppercase text-[#4A4E69] text-lg sm:text-xl'
-                        : 'font-normal text-[#22223B]'
-                    }`}
-                  >
-                    {item.title}
-                  </h3>
-                  <p className="font-mono text-xs sm:text-sm text-[#C9ADA7] font-medium tracking-wide">
+                <div
+                  key={i}
+                  className={`py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 group transition-all ${
+                    item.isBreak ? 'opacity-85' : 'hover:translate-x-1'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`font-mono text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                        item.isBreak
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'bg-purple-600/20 text-purple-300 border border-purple-500/30 group-hover:bg-purple-600/40'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+                    <h3
+                      className={`text-base sm:text-lg md:text-xl tracking-tight transition-colors ${
+                        item.isBreak
+                          ? 'font-bold uppercase text-slate-400'
+                          : 'font-semibold text-white group-hover:text-cyan-300'
+                      }`}
+                    >
+                      {item.title}
+                    </h3>
+                  </div>
+                  <p className="font-mono text-xs sm:text-sm text-cyan-400 font-semibold tracking-wide flex-shrink-0">
                     {item.time}
                   </p>
                 </div>
@@ -1546,26 +1652,39 @@ export default function App() {
       {/* ─────────────────────────────────────────────────────────────
           VENUE SECTION — V. T. Patil Convention Hall
       ───────────────────────────────────────────────────────────── */}
-      <section id="venue" className="bg-[#F2E9E4] py-20 sm:py-28 text-[#22223B]">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+      <section id="venue" className="bg-[#070B13] aws-builder-grid py-20 sm:py-28 text-white border-t border-white/10 relative overflow-hidden">
+        {/* Glow accent */}
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 relative z-10">
 
           {/* Section Header */}
           <div className="mb-12">
-            <p className="font-mono text-xs uppercase tracking-widest text-[#C9ADA7] font-bold mb-3">VENUE</p>
-            <h2 className="text-4xl sm:text-5xl md:text-[54px] font-bold tracking-tight text-[#22223B] leading-[1.1]">
-              V.T. Patil<br className="hidden sm:block" /> Convention Hall
+            <div className="flex items-center gap-2 mb-3">
+              <BuilderCross size={18} />
+              <p className="font-mono text-xs uppercase tracking-widest text-purple-400 font-bold">
+                [ 05 // VENUE ]
+              </p>
+            </div>
+
+            <h2 className="text-4xl sm:text-5xl md:text-[54px] font-bold tracking-tight text-white leading-[1.1]">
+              V.T. Patil<br className="hidden sm:block" />{' '}
+              <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                Convention Hall
+              </span>
             </h2>
+
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-5">
-              <span className="inline-flex items-center gap-1.5 text-sm text-[#22223B]/70 font-medium">
-                <MapPin className="w-4 h-4 text-[#4A4E69] flex-shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-300 font-medium">
+                <MapPin className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                 Tararani High School Compound, Poorvarang, Mahalaxminagar, Rajarampuri, Kolhapur 416008
               </span>
-              <span className="inline-flex items-center gap-1.5 text-sm text-[#22223B]/70 font-medium">
-                <Calendar className="w-4 h-4 text-[#4A4E69] flex-shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-300 font-medium">
+                <Calendar className="w-4 h-4 text-purple-400 flex-shrink-0" />
                 1 November 2026
               </span>
-              <span className="inline-flex items-center gap-1.5 text-sm text-[#22223B]/70 font-medium">
-                <Clock className="w-4 h-4 text-[#4A4E69] flex-shrink-0" />
+              <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-300 font-medium">
+                <Clock className="w-4 h-4 text-fuchsia-400 flex-shrink-0" />
                 9:00 AM – 5:00 PM
               </span>
             </div>
@@ -1575,7 +1694,7 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
 
             {/* Venue Image */}
-            <div className="rounded-xl overflow-hidden shadow-lg bg-[#22223B] aspect-[4/3] relative group">
+            <div className="rounded-xl overflow-hidden shadow-2xl bg-[#0B1120] border border-white/10 aspect-[4/3] relative group">
               <img
                 src="/venue-hall.jpg"
                 alt="V.T. Patil Convention Hall, Rajarampuri, Kolhapur"
@@ -1585,16 +1704,19 @@ export default function App() {
                   t.src = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=900&q=80';
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#22223B]/70 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute bottom-4 left-4">
-                <span className="inline-flex items-center gap-1.5 bg-[#C9ADA7] text-[#22223B] font-mono text-[10px] font-extrabold uppercase px-3 py-1 tracking-widest shadow-md">
-                  <MapPin className="w-3 h-3" /> Event Venue
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070B13]/85 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-mono text-[10px] font-extrabold uppercase px-3 py-1 tracking-widest shadow-lg">
+                  <MapPin className="w-3 h-3" /> OFFICIAL VENUE
+                </span>
+                <span className="font-mono text-[10px] text-white/80 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded">
+                  KOLHAPUR, MAHARASHTRA
                 </span>
               </div>
             </div>
 
             {/* Google Maps Embed */}
-            <div className="rounded-xl overflow-hidden shadow-lg border border-[#22223B]/10 aspect-[4/3] bg-[#d8dde4]">
+            <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10 aspect-[4/3] bg-[#0B1120]">
               <iframe
                 title="V.T. Patil Convention Hall, Kolhapur"
                 src="https://maps.google.com/maps?q=V.T.+Patil+Convention+Hall,+Tararani+High+School+Compound,+Poorvarang,+Mahalaxminagar,+Rajarampuri,+Kolhapur,+Maharashtra+416008&t=&z=17&ie=UTF8&iwloc=&output=embed"
@@ -1614,17 +1736,17 @@ export default function App() {
               href="https://maps.app.goo.gl/xygHjt6PzCVoEj5JA"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 h-11 px-6 bg-[#22223B] hover:bg-[#4A4E69] text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 h-11 px-6 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-purple-600/25"
             >
-              <MapPin className="w-4 h-4 text-[#C9ADA7]" />
-              📍 Get Directions
+              <MapPin className="w-4 h-4 text-cyan-300" />
+              <span>📍 GET DIRECTIONS</span>
             </a>
             <a
               href="#tickets"
-              className="inline-flex items-center gap-2 h-11 px-6 border-2 border-[#22223B] hover:bg-[#22223B] hover:text-white text-[#22223B] font-mono text-xs font-bold uppercase tracking-wider transition-all"
+              className="inline-flex items-center gap-2 h-11 px-6 border border-white/20 hover:border-cyan-400 hover:bg-white/5 text-white font-mono text-xs font-bold uppercase tracking-wider transition-all"
             >
-              Register Now
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span>REGISTER NOW</span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-cyan-400" />
             </a>
           </div>
 
@@ -1632,46 +1754,51 @@ export default function App() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
             {/* Travel Info Card — spans 2 cols on large */}
-            <div className="lg:col-span-2 bg-white rounded-xl p-7 shadow-sm border border-[#22223B]/10">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#4A4E69] font-bold mb-6">Getting There</p>
+            <div className="lg:col-span-2 bg-[#0B1120]/90 backdrop-blur-md rounded-xl p-7 shadow-2xl border border-white/10">
+              <div className="flex items-center justify-between mb-6">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-purple-400 font-bold">
+                  [ TRANSIT & TRAVEL GUIDE ]
+                </p>
+                <span className="font-mono text-[10px] text-slate-400">RAJARAMPURI HUB</span>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
-                <div className="flex gap-3 items-start">
+                <div className="flex gap-3 items-start p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <span className="text-xl mt-0.5">🚗</span>
                   <div>
-                    <p className="font-semibold text-sm text-[#22223B] mb-1">Auto / Cab</p>
-                    <p className="text-xs text-[#64748b] leading-relaxed">
-                      Local autos, cabs, and ride-hailing services (Ola, Uber) are available across Kolhapur city. Just ask for <strong>V.T. Patil Convention Hall, Rajarampuri</strong> or show the address.
+                    <p className="font-semibold text-sm text-white mb-1">Auto / Cab</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Local autos, cabs, and ride-hailing services (Ola, Uber) are available across Kolhapur city. Just ask for <strong className="text-cyan-300">V.T. Patil Convention Hall, Rajarampuri</strong>.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-3 items-start">
+                <div className="flex gap-3 items-start p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <span className="text-xl mt-0.5">🚌</span>
                   <div>
-                    <p className="font-semibold text-sm text-[#22223B] mb-1">Public Transport</p>
-                    <p className="text-xs text-[#64748b] leading-relaxed">
-                      Rajaram Puri is a central, well-connected area in Kolhapur. City buses and shared autos run from the Railway Station and Central Bus Stand.
+                    <p className="font-semibold text-sm text-white mb-1">Public Transport</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Rajarampuri is a central, well-connected area in Kolhapur. City buses and shared autos run regularly from Railway Station and Central Bus Stand.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-3 items-start">
+                <div className="flex gap-3 items-start p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <span className="text-xl mt-0.5">🅿️</span>
                   <div>
-                    <p className="font-semibold text-sm text-[#22223B] mb-1">Parking</p>
-                    <p className="text-xs text-[#64748b] leading-relaxed">
-                      Parking information will be confirmed and announced closer to the event. Follow our social media channels for updates.
+                    <p className="font-semibold text-sm text-white mb-1">Parking</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Dedicated parking spaces inside the compound and adjacent lane. Community volunteers will be on-site to assist with parking.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-3 items-start">
+                <div className="flex gap-3 items-start p-3 rounded-lg bg-white/[0.02] border border-white/5">
                   <span className="text-xl mt-0.5">🗺️</span>
                   <div>
-                    <p className="font-semibold text-sm text-[#22223B] mb-1">Nearby Landmark</p>
-                    <p className="text-xs text-[#64748b] leading-relaxed">
-                      The venue is located in <strong>Tararani High School Compound, Poorvarang, Mahalaxminagar, Rajarampuri</strong>. Most locals and drivers will recognize this area easily.
+                    <p className="font-semibold text-sm text-white mb-1">Nearby Landmark</p>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Located in <strong className="text-cyan-300">Tararani High School Compound, Poorvarang, Mahalaxminagar, Rajarampuri</strong>.
                     </p>
                   </div>
                 </div>
@@ -1679,25 +1806,29 @@ export default function App() {
             </div>
 
             {/* Need Help Card */}
-            <div className="lg:col-span-1 bg-[#22223B] rounded-xl p-7 shadow-sm text-white flex flex-col">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#C9ADA7] font-bold mb-4">Need Help?</p>
-              <h3 className="font-bold text-base leading-snug mb-3">
-                Having trouble finding the venue?
-              </h3>
-              <p className="text-xs text-white/65 leading-relaxed flex-1 mb-6">
-                Our SCD volunteers will be placed at key points around Rajarampuri to help guide attendees to V.T. Patil Convention Hall on event day. We've got you covered!
-              </p>
+            <div className="lg:col-span-1 bg-[#0B1120]/90 backdrop-blur-md rounded-xl p-7 shadow-2xl border border-white/10 text-white flex flex-col justify-between">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-fuchsia-400 font-bold mb-4">
+                  [ VOLUNTEER ASSISTANCE ]
+                </p>
+                <h3 className="font-bold text-lg leading-snug mb-3 text-white">
+                  Having trouble finding the venue?
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed mb-6">
+                  Our AWS Student Builder Group volunteers will be stationed at key intersections across Rajarampuri to guide attendees to the hall.
+                </p>
+              </div>
               <div className="space-y-3">
                 <a
                   href="https://wa.me/919999999999"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 h-10 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors"
+                  className="w-full flex items-center justify-center gap-2 h-11 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors shadow-lg shadow-emerald-600/20"
                 >
-                  💬 WhatsApp Help
+                  💬 WHATSAPP HELP DESK
                 </a>
-                <p className="text-[10px] text-white/35 text-center font-mono">
-                  Official number will be announced soon
+                <p className="text-[10px] text-slate-500 text-center font-mono">
+                  Official helpline active on Nov 1, 2026
                 </p>
               </div>
             </div>
@@ -1707,33 +1838,46 @@ export default function App() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          FAQ SECTION
+          FAQ SECTION (AWS BUILDER CENTER THEME)
       ───────────────────────────────────────────────────────────── */}
-      <section id="faq" className="py-20 sm:py-24 bg-[#F2E9E4] text-[#22223B]">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+      <section id="faq" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white border-t border-white/10 relative overflow-hidden">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-8 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
             <div className="lg:col-span-4">
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-[#22223B]">
-                FAQ's
+              <div className="flex items-center gap-2 mb-3">
+                <BuilderCross size={18} />
+                <span className="font-mono text-xs text-purple-400 uppercase tracking-widest font-semibold">
+                  [ 06 // FAQ ]
+                </span>
+              </div>
+              <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white">
+                Frequently
+                <br />
+                <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                  Questions
+                </span>
               </h2>
+              <p className="mt-4 text-sm text-slate-300 font-normal leading-relaxed">
+                Everything you need to know about tickets, workshops, timing, and community guidelines.
+              </p>
             </div>
 
-            <div className="lg:col-span-8 divide-y divide-[#22223B]/15">
+            <div className="lg:col-span-8 divide-y divide-white/10 bg-[#0B1120]/80 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl">
               {faqs.map((faq, index) => {
                 const isOpen = openFaqIndex === index;
                 return (
-                  <div key={index} className="py-5">
+                  <div key={index} className="py-5 first:pt-0 last:pb-0">
                     <button
                       onClick={() => setOpenFaqIndex(isOpen ? null : index)}
-                      className="w-full flex items-center justify-between text-left gap-4 font-normal text-base sm:text-lg text-[#22223B] hover:text-[#4A4E69] transition-colors focus:outline-none cursor-pointer"
+                      className="w-full flex items-center justify-between text-left gap-4 font-semibold text-base sm:text-lg text-white hover:text-cyan-300 transition-colors focus:outline-none cursor-pointer"
                     >
                       <span className="leading-snug">{faq.q}</span>
-                      <span className="flex-shrink-0 text-[#22223B] transition-transform duration-300">
-                        {isOpen ? <Minus className="w-5 h-5 text-[#C9ADA7]" /> : <Plus className="w-5 h-5" />}
+                      <span className="flex-shrink-0 text-purple-400 transition-transform duration-300">
+                        {isOpen ? <Minus className="w-5 h-5 text-fuchsia-400" /> : <Plus className="w-5 h-5" />}
                       </span>
                     </button>
                     {isOpen && (
-                      <div className="mt-3 text-xs sm:text-sm text-[#64748b] leading-relaxed pr-6 animate-in fade-in duration-200">
+                      <div className="mt-3 text-xs sm:text-sm text-slate-300 leading-relaxed pr-6 animate-in fade-in duration-200">
                         <p>{faq.a}</p>
                       </div>
                     )}
@@ -1746,9 +1890,14 @@ export default function App() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────────
-          FOOTER
+          FOOTER (AWS BUILDER CENTER THEME)
       ───────────────────────────────────────────────────────────── */}
-      <footer className="bg-[#22223B] text-white border-t border-white/5 pt-16">
+      <footer className="bg-[#05080E] text-white border-t border-white/10 pt-16 relative overflow-hidden">
+        {/* Builder Banner Strip */}
+        <div className="mb-12 max-w-[1400px] mx-auto px-4 sm:px-8">
+          <BuilderBannerStrip />
+        </div>
+
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 pb-12 flex flex-col md:flex-row justify-between gap-12">
           {/* Brand */}
           <div className="max-w-xs">
@@ -1756,50 +1905,59 @@ export default function App() {
               <AwsLogo className="h-8 w-auto" dark />
               <div className="flex flex-col">
                 <span className="font-bold text-sm tracking-tight text-white leading-tight">COMMUNITY DAY</span>
-                <span className="font-mono text-[10px] text-white/50 tracking-wider">KOLHAPUR 2026</span>
+                <span className="font-mono text-[10px] text-purple-400 tracking-wider">KOLHAPUR 2026</span>
               </div>
             </a>
-            <p className="mt-4 text-xs sm:text-sm text-white/50 leading-relaxed">
-              Built by the community, for the community.
+            <p className="mt-4 text-xs sm:text-sm text-slate-400 leading-relaxed">
+              Organized with pride by the AWS Student Builder Group. Powered by community builders, students, and cloud enthusiasts.
             </p>
+            <div className="mt-4">
+              <BuilderGroupPill text="AWS Student Builder Group" />
+            </div>
           </div>
 
           {/* Links columns */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 sm:gap-12 text-xs sm:text-sm">
             <div className="flex flex-col gap-2.5">
-              <p className="font-bold text-xs uppercase tracking-widest text-white mb-1">Explore</p>
-              <a href="#about" className="text-white/60 hover:text-[#C9ADA7] transition-colors">About</a>
-              <a href="#speakers" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Speakers</a>
-              <a href="#tickets" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Tickets</a>
-              <a href="#sponsors" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Sponsors</a>
-              <a href="#agenda" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Schedule</a>
-              <Link to="/team" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Team</Link>
-              <a href="#venue" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Venue</a>
-              <a href="#faq" className="text-white/60 hover:text-[#C9ADA7] transition-colors">FAQ</a>
-              <Link to="/badge" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Badge</Link>
+              <p className="font-mono font-bold text-xs uppercase tracking-widest text-purple-400 mb-1">
+                // EXPLORE
+              </p>
+              <a href="#about" className="text-slate-400 hover:text-white transition-colors">About</a>
+              <a href="#speakers" className="text-slate-400 hover:text-white transition-colors">Speakers</a>
+              <a href="#tickets" className="text-slate-400 hover:text-white transition-colors">Tickets</a>
+              <a href="#sponsors" className="text-slate-400 hover:text-white transition-colors">Sponsors</a>
+              <a href="#agenda" className="text-slate-400 hover:text-white transition-colors">Schedule</a>
+              <Link to="/team" className="text-slate-400 hover:text-white transition-colors">Team</Link>
+              <a href="#venue" className="text-slate-400 hover:text-white transition-colors">Venue</a>
+              <a href="#faq" className="text-slate-400 hover:text-white transition-colors">FAQ</a>
+              <Link to="/badge" className="text-slate-400 hover:text-white transition-colors">Badge</Link>
             </div>
 
             <div className="flex flex-col gap-2.5">
-              <p className="font-bold text-xs uppercase tracking-widest text-white mb-1">Community</p>
-              <a href="#tickets" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Get Tickets</a>
-              <a href="mailto:aws@vvce.ac.in" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Become a Partner</a>
-              <a href="mailto:aws@vvce.ac.in" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Contact Us</a>
-              <a href="#" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Code of Conduct</a>
+              <p className="font-mono font-bold text-xs uppercase tracking-widest text-fuchsia-400 mb-1">
+                // COMMUNITY
+              </p>
+              <a href="#tickets" className="text-slate-400 hover:text-white transition-colors">Get Tickets</a>
+              <a href="mailto:aws@vvce.ac.in" className="text-slate-400 hover:text-white transition-colors">Become a Partner</a>
+              <a href="mailto:aws@vvce.ac.in" className="text-slate-400 hover:text-white transition-colors">Contact Us</a>
+              <a href="#" className="text-slate-400 hover:text-white transition-colors">Code of Conduct</a>
             </div>
 
             <div className="flex flex-col gap-2.5">
-              <p className="font-bold text-xs uppercase tracking-widest text-white mb-1">Socials</p>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-[#C9ADA7] transition-colors">LinkedIn</a>
-              <a href="https://meetup.com" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-[#C9ADA7] transition-colors">Meetup</a>
-              <a href="https://wa.me" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-[#C9ADA7] transition-colors">WhatsApp</a>
+              <p className="font-mono font-bold text-xs uppercase tracking-widest text-cyan-400 mb-1">
+                // CONNECT
+              </p>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">LinkedIn</a>
+              <a href="https://meetup.com" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">Meetup</a>
+              <a href="https://wa.me" target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors">WhatsApp</a>
             </div>
           </div>
         </div>
 
         {/* Bottom copyright */}
-        <div className="border-t border-white/5 py-5 px-4 text-center">
-          <p className="font-mono text-[11px] text-white/35 uppercase tracking-wider">
-            © 2026 AWS STUDENT BUILDER GROUP VVCE
+        <div className="border-t border-white/10 py-5 px-4 text-center bg-[#03060A]">
+          <p className="font-mono text-[11px] text-slate-500 uppercase tracking-wider">
+            [ © 2026 AWS STUDENT BUILDER GROUP // COMMUNITY DAY KOLHAPUR ]
           </p>
         </div>
       </footer>

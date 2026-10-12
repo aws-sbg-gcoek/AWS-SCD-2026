@@ -353,21 +353,24 @@ export default function SocialBadge() {
   };
 
   return (
-    <section id="badge" className="py-16 sm:py-24 bg-[#F2E9E4] text-[#22223B]">
+    <section id="badge" className="py-16 sm:py-24 bg-[#070B13] aws-builder-grid text-white border-t border-white/10">
       <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
-        {/* Section Header Matching Screenshot */}
+        {/* Section Header */}
         <div className="mb-10 sm:mb-12">
-          <p className="font-mono text-xs sm:text-[13px] uppercase tracking-widest text-[#4A4E69] font-bold mb-3">
-            SOCIAL BADGE
-          </p>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-[#22223B] leading-[1.12]">
-            Show you're part of AWS
-            <br className="hidden sm:inline" />
-            Student Community Day Kolhapur.
+          <div className="flex items-center gap-2 mb-3">
+            <span className="w-2.5 h-2.5 bg-fuchsia-500 shadow-[0_0_8px_#EC4899]" />
+            <p className="font-mono text-xs sm:text-[13px] uppercase tracking-widest text-purple-400 font-bold">
+              [ 02 // SOCIAL BADGE GENERATOR ]
+            </p>
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-bold tracking-tight text-white leading-[1.12]">
+            Show you're part of{' '}
+            <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+              AWS Community Day Kolhapur.
+            </span>
           </h2>
-          <p className="mt-4 text-sm sm:text-base text-[#4A4E69] font-medium max-w-2xl leading-relaxed">
-            Generate personalized social cards to let your network know you're attending, speaking,
-            volunteering or supporting the community.
+          <p className="mt-4 text-sm sm:text-base text-slate-300 font-normal max-w-2xl leading-relaxed">
+            Generate your personalized, high-res social badge with the official AWS Builder visual motif to share on LinkedIn, Twitter, and WhatsApp.
           </p>
         </div>
 
@@ -376,40 +379,40 @@ export default function SocialBadge() {
           {/* ─────────────────────────────────────────────────────────────
               LEFT COLUMN: FORM CONTROLS
           ───────────────────────────────────────────────────────────── */}
-          <div className="lg:col-span-5 bg-white border border-gray-200 p-6 sm:p-8 shadow-sm">
+          <div className="lg:col-span-5 bg-[#0B1120]/90 backdrop-blur-md border border-white/10 p-6 sm:p-8 shadow-2xl rounded-2xl">
             <div className="space-y-6">
               {/* Row 1: Full Name & Email Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-2">
-                    Full Name<span className="text-red-500">*</span>
+                  <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-2 font-mono">
+                    Full Name<span className="text-fuchsia-400">*</span>
                   </label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="RENATE REINSVE"
-                    className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-gray-200 text-[#22223B] text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-[#4A4E69] focus:bg-white uppercase transition-colors"
+                    className="w-full h-11 px-3.5 bg-[#070B13] border border-white/15 text-white text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-purple-500 focus:bg-[#070B13] uppercase transition-colors rounded-lg"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-2">
-                    Email Address<span className="text-red-500">*</span>
+                  <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-2 font-mono">
+                    Email Address<span className="text-fuchsia-400">*</span>
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="RENATEREINSVE@GMAIL.COM"
-                    className="w-full h-11 px-3.5 bg-[#F8FAFC] border border-gray-200 text-[#22223B] text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-[#4A4E69] focus:bg-white uppercase transition-colors"
+                    placeholder="BUILDER@GMAIL.COM"
+                    className="w-full h-11 px-3.5 bg-[#070B13] border border-white/15 text-white text-xs font-mono font-medium tracking-wide focus:outline-none focus:border-purple-500 focus:bg-[#070B13] uppercase transition-colors rounded-lg"
                   />
                 </div>
               </div>
 
               {/* Row 2: Role selector */}
               <div>
-                <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-2 font-mono">
                   Badge Role
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -418,10 +421,10 @@ export default function SocialBadge() {
                       key={r}
                       type="button"
                       onClick={() => setRole(r)}
-                      className={`h-9 font-mono text-[11px] font-semibold tracking-wider uppercase border transition-all ${
+                      className={`h-10 font-mono text-[11px] font-bold tracking-wider uppercase border rounded-lg transition-all cursor-pointer ${
                         role === r
-                          ? 'bg-[#22223B] text-white border-[#22223B]'
-                          : 'bg-[#F8FAFC] text-[#64748b] border-gray-200 hover:border-gray-400'
+                          ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-transparent shadow-lg shadow-purple-600/30'
+                          : 'bg-[#070B13] text-slate-300 border-white/15 hover:border-purple-400 hover:text-white'
                       }`}
                     >
                       {r}
@@ -432,19 +435,19 @@ export default function SocialBadge() {
 
               {/* Row 3: Upload Photo */}
               <div>
-                <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-1">
-                  Upload Photo<span className="text-red-500">*</span>
+                <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-1 font-mono">
+                  Upload Photo<span className="text-fuchsia-400">*</span>
                 </label>
-                <p className="text-[11.5px] text-[#4A4E69] font-medium mb-3">
-                  Upload a clear headshot or portrait photo with a solid background.
+                <p className="text-[11.5px] text-slate-400 mb-3">
+                  Upload a clear portrait photo. Drag inside the preview to reposition.
                 </p>
 
                 {/* Upload bar */}
-                <div className="flex items-center border border-gray-200 bg-[#F8FAFC] p-1.5 pl-3">
-                  <div className="flex items-center gap-2 flex-1 text-[#64748b] text-xs font-mono truncate mr-2">
-                    <ImageIcon className="w-4 h-4 flex-shrink-0 text-[#64748b]" />
+                <div className="flex items-center border border-white/15 bg-[#070B13] p-1.5 pl-3 rounded-lg">
+                  <div className="flex items-center gap-2 flex-1 text-slate-400 text-xs font-mono truncate mr-2">
+                    <ImageIcon className="w-4 h-4 flex-shrink-0 text-purple-400" />
                     <span className="truncate uppercase text-[11px]">
-                      {fileName || 'PNG OR JPG RECOMMENDED. LARGER IMA...'}
+                      {fileName || 'PNG OR JPG RECOMMENDED...'}
                     </span>
                   </div>
 
@@ -459,9 +462,9 @@ export default function SocialBadge() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#22223B] font-mono text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 bg-purple-600 hover:bg-purple-500 text-white font-mono text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer rounded"
                   >
-                    <span>UPLOAD PHOTO</span>
+                    <span>UPLOAD</span>
                     <Upload className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -469,15 +472,15 @@ export default function SocialBadge() {
 
               {/* Row 4: Zoom / Adjust Image */}
               <div>
-                <label className="block text-xs font-bold text-[#22223B] uppercase tracking-wider mb-1">
-                  Zoom/Adjust Image
+                <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider mb-1 font-mono">
+                  Zoom / Adjust Image
                 </label>
-                <p className="text-[11.5px] text-[#4A4E69] font-medium mb-3">
-                  Your photo keeps its original proportions. Drag to reposition it or use the slider to zoom in.
+                <p className="text-[11.5px] text-slate-400 mb-3">
+                  Your photo keeps its original proportions. Drag to reposition or use slider.
                 </p>
 
-                <div className="flex items-center gap-3 p-3 bg-[#F8FAFC] border border-gray-200">
-                  <ZoomOut className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                <div className="flex items-center gap-3 p-3 bg-[#070B13] border border-white/15 rounded-lg">
+                  <ZoomOut className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <input
                     type="range"
                     min="0.5"
@@ -485,17 +488,17 @@ export default function SocialBadge() {
                     step="0.05"
                     value={zoom}
                     onChange={(e) => setZoom(parseFloat(e.target.value))}
-                    className="w-full accent-[#22223B] cursor-pointer"
+                    className="w-full accent-fuchsia-500 cursor-pointer"
                   />
-                  <ZoomIn className="w-4 h-4 text-[#64748b] flex-shrink-0" />
+                  <ZoomIn className="w-4 h-4 text-slate-400 flex-shrink-0" />
 
                   <button
                     type="button"
                     onClick={handleFitToFrame}
-                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-[#22223B] font-mono text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer ml-1"
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 h-8 px-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-mono text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer ml-1 rounded"
                   >
                     <RotateCcw className="w-3 h-3" />
-                    <span>FIT TO FRAME</span>
+                    <span>FIT</span>
                   </button>
                 </div>
               </div>
@@ -506,29 +509,29 @@ export default function SocialBadge() {
                   type="button"
                   onClick={handleDownloadImage}
                   disabled={isDownloading}
-                  className={`h-11 flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  className={`h-11 flex items-center justify-center gap-2 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer rounded-lg ${
                     isFormComplete
-                      ? 'bg-[#F2E9E4] hover:bg-[#22223B] hover:text-white text-[#22223B] border border-[#22223B]/30'
-                      : 'bg-[#F2E9E4] text-gray-400 border border-gray-200'
+                      ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white shadow-lg shadow-purple-600/30'
+                      : 'bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed'
                   }`}
                 >
-                  <span>{isDownloading ? 'GENERATING...' : 'DOWNLOAD IMAGE'}</span>
+                  <span>{isDownloading ? 'GENERATING...' : 'DOWNLOAD BADGE'}</span>
                   <Download className="w-4 h-4" />
                 </button>
 
                 <button
                   type="button"
                   onClick={handleShare}
-                  className="h-11 flex items-center justify-center gap-2 bg-[#4A4E69] hover:bg-[#393c52] text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
+                  className="h-11 flex items-center justify-center gap-2 bg-[#1E293B] hover:bg-[#334155] border border-white/15 text-white font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer rounded-lg shadow-sm"
                 >
-                  <span>SHARE ON SOCIAL</span>
-                  <Share2 className="w-4 h-4" />
+                  <span>SHARE BADGE</span>
+                  <Share2 className="w-4 h-4 text-cyan-300" />
                 </button>
               </div>
 
-              {/* Helper text matching screenshot */}
-              <p className="text-[11.5px] text-[#4A4E69] font-medium leading-relaxed">
-                Complete your name, email, and photo to enable the download. Upload a photo to replace the template portrait.
+              {/* Helper text */}
+              <p className="text-[11.5px] text-slate-400 leading-relaxed font-mono">
+                [ TIP: Use a portrait with contrast for the sharpest badge export ]
               </p>
             </div>
           </div>
@@ -538,33 +541,33 @@ export default function SocialBadge() {
           ───────────────────────────────────────────────────────────── */}
           <div className="lg:col-span-7 flex flex-col">
             {/* Tabs matching screenshot */}
-            <div className="flex items-center">
+            <div className="flex items-center gap-2 mb-2">
               <button
                 type="button"
                 onClick={() => setActiveTab('POST')}
-                className={`w-36 sm:w-44 h-12 flex items-center justify-center font-mono text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors border-t border-l border-r ${
+                className={`w-36 sm:w-44 h-11 flex items-center justify-center font-mono text-xs font-bold uppercase tracking-wider cursor-pointer transition-all rounded-t-lg border ${
                   activeTab === 'POST'
-                    ? 'bg-[#1E293B] text-white border-[#1E293B]'
-                    : 'bg-white text-[#1E293B] border-gray-300'
+                    ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-transparent shadow-lg shadow-purple-600/20'
+                    : 'bg-[#0B1120] text-slate-400 border-white/10 hover:text-white'
                 }`}
               >
-                POST
+                POST (1:1)
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('STORY')}
-                className={`w-36 sm:w-44 h-12 flex items-center justify-center font-mono text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors border-t border-l border-r ${
+                className={`w-36 sm:w-44 h-11 flex items-center justify-center font-mono text-xs font-bold uppercase tracking-wider cursor-pointer transition-all rounded-t-lg border ${
                   activeTab === 'STORY'
-                    ? 'bg-[#1E293B] text-white border-[#1E293B]'
-                    : 'bg-white text-[#1E293B] border-gray-300'
+                    ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-transparent shadow-lg shadow-purple-600/20'
+                    : 'bg-[#0B1120] text-slate-400 border-white/10 hover:text-white'
                 }`}
               >
-                STORY
+                STORY (9:16)
               </button>
             </div>
 
-            {/* Preview Frame Container matching soft gray background */}
-            <div className="bg-[#EBF0F5] p-4 sm:p-10 flex items-center justify-center min-h-[500px] sm:min-h-[620px] shadow-sm border border-gray-200">
+            {/* Preview Frame Container */}
+            <div className="bg-[#070B13]/90 p-4 sm:p-10 flex items-center justify-center min-h-[500px] sm:min-h-[620px] shadow-2xl border border-white/10 rounded-2xl">
               {/* POST FRAME: Matches Image 1 with black side pillarbox bars!
                   STORY FRAME: Matches Image 2 with vertical 9:16 layout without side pillarboxes! */}
               <div

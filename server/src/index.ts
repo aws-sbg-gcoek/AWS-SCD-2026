@@ -21,6 +21,7 @@ import {
 } from './bookingService.js';
 import { verifyCheckoutSignature, verifyWebhookSignature } from './security.js';
 import { startEmailWorker } from './emailWorker.js';
+import nodemailer from 'nodemailer';
 
 const app = express();
 const razorpay = new Razorpay({ key_id: config.RAZORPAY_KEY_ID, key_secret: config.RAZORPAY_KEY_SECRET });
@@ -292,6 +293,63 @@ app.get('/api/checkout/bookings/:bookingId', verifyLimiter, async (req, res, nex
     res.json(booking);
   } catch (error) {
     next(error);
+  }
+});
+
+app.post('/api/send-ticket-email', express.json({ limit: '2mb' }), async (req, res) => {
+  try {
+    const { to, subject, html, from, apiKey, gmailUser: bodyGmailUser, gmailPass: bodyGmailPass } = req.body ?? {};
+    const gmailUser = bodyGmailUser || process.env.VITE_GMAIL_USER || process.env.GMAIL_USER;
+    const gmailPass = bodyGmailPass || process.env.VITE_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+    const key = apiKey || process.env.VITE_RESEND_API_KEY || process.env.RESEND_API_KEY;
+
+    // PATH 1: Direct Gmail delivery via Nodemailer (No custom domain or DNS required)
+    if (gmailUser && gmailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: String(gmailPass).replace(/\s+/g, ''),
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"AWS SCD 2026 Organizing Committee" <${gmailUser}>`,
+        to: Array.isArray(to) ? to.join(', ') : to,
+        subject,
+        html,
+      });
+
+      return res.status(200).json({ success: true, provider: 'gmail', id: info.messageId });
+    }
+
+    // PATH 2: Resend API
+    if (key) {
+      const sender = from || process.env.VITE_RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
+          to: Array.isArray(to) ? to : [to],
+          subject,
+          html,
+        }),
+      });
+
+      const data = await response.json();
+      return res.status(response.status).json(data);
+    }
+
+    return res.status(400).json({
+      error: 'Email service credentials not configured. Please supply Gmail or Resend credentials.',
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to send email';
+    return res.status(500).json({ error: message });
   }
 });
 

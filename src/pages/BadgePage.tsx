@@ -25,18 +25,18 @@ function AwsLogo({ className = "h-8 w-auto", dark = false }: { className?: strin
 
 export default function BadgePage() {
   return (
-    <div className="min-h-screen bg-[#F2E9E4]">
+    <div className="min-h-screen bg-[#070B13] aws-builder-grid text-white font-sans antialiased">
       {/* Header */}
-      <header className="bg-white/98 backdrop-blur-md border-b border-[#22223B]/10 shadow-sm">
+      <header className="sticky top-0 z-50 bg-[#0B1120]/90 backdrop-blur-md border-b border-white/10 shadow-lg">
         <div className="max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10 h-16 sm:h-[72px] flex items-center justify-between">
           {/* Logo brand */}
           <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group focus:outline-none">
-            <AwsLogo className="h-7 sm:h-9 w-auto transition-transform group-hover:scale-105" />
+            <AwsLogo className="h-7 sm:h-9 w-auto transition-transform group-hover:scale-105" dark />
             <div className="flex flex-col">
-              <span className="font-extrabold text-sm sm:text-[15px] tracking-tight text-[#22223B] leading-none">
+              <span className="font-extrabold text-sm sm:text-[15px] tracking-tight text-white leading-none">
                 COMMUNITY DAY
               </span>
-              <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-[#22223B]/60 mt-1">
+              <span className="font-mono text-[9px] sm:text-[10px] tracking-wider uppercase text-purple-400 mt-1">
                 KOLHAPUR 2026
               </span>
             </div>
@@ -45,9 +45,9 @@ export default function BadgePage() {
           {/* Back to Home Button */}
           <Link
             to="/"
-            className="inline-flex items-center gap-2 bg-[#4A4E69] text-white hover:bg-[#22223B] font-mono text-xs font-bold uppercase tracking-wider px-4 py-2 transition-colors duration-200"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-mono text-xs font-bold uppercase tracking-wider px-5 py-2.5 transition-all shadow-md shadow-purple-600/20"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-cyan-300" />
             <span>Back to Home</span>
           </Link>
         </div>
@@ -57,7 +57,7 @@ export default function BadgePage() {
       <SocialBadge />
 
       {/* Footer */}
-      <footer className="bg-[#22223B] text-white border-t border-white/5 pt-16">
+      <footer className="bg-[#03060A] text-white border-t border-white/10 pt-16">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-8 pb-12">
           <div className="flex flex-col md:flex-row justify-between gap-8 items-center">
             {/* Brand */}

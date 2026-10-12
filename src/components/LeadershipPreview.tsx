@@ -119,10 +119,10 @@ export default function LeadershipPreview() {
 
   if (loading) {
     return (
-      <section id="team" className="py-20 sm:py-24 bg-[#22223B] text-white relative overflow-hidden">
+      <section id="team" className="py-20 sm:py-24 bg-[#070B13] aws-builder-grid text-white relative overflow-hidden border-t border-white/10">
         <div className="max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10">
           <div className="text-center">
-            <p className="text-white/60">Loading team...</p>
+            <p className="text-slate-400 font-mono text-xs uppercase tracking-wider">Loading team...</p>
           </div>
         </div>
       </section>
@@ -130,27 +130,25 @@ export default function LeadershipPreview() {
   }
 
   return (
-    <section id="team" className="pt-16 sm:pt-20 pb-6 sm:pb-8 bg-[#22223B] text-white relative overflow-hidden">
-      {/* Subtle patterned overlay */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg, transparent, transparent 40px, white 40px, white 41px), repeating-linear-gradient(90deg, transparent, transparent 40px, white 40px, white 41px)'
-        }}
-      />
-
+    <section id="team" className="pt-16 sm:pt-20 pb-6 sm:pb-8 bg-[#070B13] aws-builder-grid text-white relative overflow-hidden border-t border-white/10">
       <div className="relative z-10 max-w-[1720px] mx-auto px-4 sm:px-8 lg:px-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 sm:mb-12">
           <div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-white leading-tight">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2.5 h-2.5 bg-fuchsia-500 rounded-none inline-block shadow-[0_0_8px_#EC4899]" />
+              <span className="font-mono text-xs text-purple-400 uppercase tracking-widest font-semibold">
+                [ TEAM // BUILDERS ]
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-tight">
               Meet the Team
               <br />
-              Behind the Experience
+              <span className="bg-gradient-to-r from-purple-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+                Behind the Experience
+              </span>
             </h2>
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-white/65 max-w-lg leading-relaxed">
-              Our dedicated team is committed to creating an unforgettable experience for every attendee.
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-300 max-w-lg leading-relaxed">
+              Our dedicated student leads and volunteers are committed to creating an unforgettable experience for every attendee.
             </p>
           </div>
           
@@ -159,20 +157,20 @@ export default function LeadershipPreview() {
             <button
               onClick={() => handleScrollCarousel('left')}
               aria-label="Previous cards"
-              className="w-10 h-10 flex items-center justify-center bg-white/10 border border-white/20 text-white hover:bg-white hover:text-[#22223B] transition-colors cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center bg-[#0B1120] border border-white/15 text-white hover:border-purple-500 hover:text-purple-400 transition-colors cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={() => handleScrollCarousel('right')}
               aria-label="Next cards"
-              className="w-10 h-10 flex items-center justify-center bg-white/10 border border-white/20 text-white hover:bg-white hover:text-[#22223B] transition-colors cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center bg-[#0B1120] border border-white/15 text-white hover:border-purple-500 hover:text-purple-400 transition-colors cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
             <Link
               to="/team"
-              className="ml-2 inline-flex items-center gap-2 h-10 px-5 border border-white/40 hover:bg-white/10 text-white font-mono text-xs font-semibold uppercase tracking-wider transition-colors"
+              className="ml-2 inline-flex items-center gap-2 h-10 px-5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-mono text-xs font-semibold uppercase tracking-wider transition-all shadow-lg shadow-purple-600/20"
             >
               <span>VIEW ALL</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -206,29 +204,28 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
   const hasEmail = member.email && member.email !== 'N/A';
   const hasLinkedIn = member.linkedin && member.linkedin !== 'N/A';
 
-  // Array of colors to cycle through
+  // Builder Center Dark Card Palettes
   const cardColors = [
-    { bg: '#2C3E50', text: '#FFFFFF', accent: '#FF9900' }, // Dark blue-gray with white text
-    { bg: '#5D6D7E', text: '#FFFFFF', accent: '#C9ADA7' }, // Medium gray-blue with white text
-    { bg: '#1C2833', text: '#FFFFFF', accent: '#a2e048' }, // Very dark with white text
-    { bg: '#8B5A3C', text: '#FFFFFF', accent: '#FFD700' }, // Brown with white text
-    { bg: '#2C5F2D', text: '#FFFFFF', accent: '#90EE90' }, // Dark green with white text
-    { bg: '#F2E9E4', text: '#22223B', accent: '#FF9900' }, // Light beige with dark text
+    { bg: '#0B1120', text: '#FFFFFF', accent: '#A855F7', border: 'rgba(168, 85, 247, 0.3)' },
+    { bg: '#0D1527', text: '#FFFFFF', accent: '#EC4899', border: 'rgba(236, 72, 153, 0.3)' },
+    { bg: '#081220', text: '#FFFFFF', accent: '#06B6D4', border: 'rgba(6, 182, 212, 0.3)' },
+    { bg: '#0B1728', text: '#FFFFFF', accent: '#F59E0B', border: 'rgba(245, 158, 11, 0.3)' },
+    { bg: '#0F172A', text: '#FFFFFF', accent: '#10B981', border: 'rgba(16, 185, 129, 0.3)' },
+    { bg: '#0B101E', text: '#FFFFFF', accent: '#8B5CF6', border: 'rgba(139, 92, 246, 0.3)' },
   ];
 
   const colorScheme = cardColors[index % cardColors.length];
 
   return (
     <div 
-      className="team-card-3d flex-shrink-0 w-[240px] xs:w-[260px] sm:w-[280px] group hover:shadow-xl overflow-hidden rounded-2xl snap-center transition-all duration-300"
+      className="team-card-3d flex-shrink-0 w-[240px] xs:w-[260px] sm:w-[280px] group hover:shadow-2xl overflow-hidden rounded-2xl snap-center transition-all duration-300 border backdrop-blur-md"
       style={{ 
         backgroundColor: colorScheme.bg,
-        borderWidth: '1px',
-        borderColor: colorScheme.bg
+        borderColor: colorScheme.border
       }}
     >
       {/* Image Container */}
-      <div className="relative aspect-square bg-gradient-to-br from-[#22223B] to-[#4A4E69] overflow-hidden">
+      <div className="relative aspect-square bg-[#070B13] overflow-hidden">
         {!imageError ? (
           <img
             src={member.image}
@@ -252,7 +249,7 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
               {member.skills.split(',').map((skill, idx) => (
                 <span
                   key={idx}
-                  className="px-2 py-0.5 bg-[#C9ADA7] text-[#22223B] text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider"
+                  className="px-2 py-0.5 bg-purple-950/80 text-purple-300 border border-purple-500/40 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider"
                 >
                   {skill.trim()}
                 </span>

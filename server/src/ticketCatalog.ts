@@ -16,7 +16,7 @@ export const ticketCatalog: TicketTypeConfig[] = [
   {
     code: 'early_bird',
     label: 'Early Bird Ticket',
-    pricePaise: 24900,
+    pricePaise: 249.00,
     startsAt: new Date('2026-09-26T16:58:00+05:30'),
     endsAt: new Date('2026-10-22T17:54:00+05:30'),
     capacity: config.TICKET_CAPACITY_EARLY_BIRD,
@@ -25,7 +25,7 @@ export const ticketCatalog: TicketTypeConfig[] = [
   {
     code: 'regular',
     label: 'Regular Ticket',
-    pricePaise: 34900,
+    pricePaise: 349.00,
     startsAt: new Date('2026-10-22T17:54:00+05:30'),
     endsAt: null,
     capacity: config.TICKET_CAPACITY_REGULAR,

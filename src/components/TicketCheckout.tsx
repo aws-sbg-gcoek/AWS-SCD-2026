@@ -1,7 +1,7 @@
 import { FormEvent, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 
-export type TicketType = 'early_bird' | 'regular';
+export type TicketType = 'super_early_bird' | 'early_bird' | 'regular';
 
 export interface TicketAvailability {
   code: TicketType;
@@ -78,7 +78,7 @@ let razorpaySdkPromise: Promise<void> | undefined;
 function isTicketAvailability(value: unknown): value is TicketAvailability {
   if (typeof value !== 'object' || value === null) return false;
   const ticket = value as Record<string, unknown>;
-  return (ticket.code === 'early_bird' || ticket.code === 'regular')
+  return (ticket.code === 'super_early_bird' || ticket.code === 'early_bird' || ticket.code === 'regular')
     && typeof ticket.label === 'string'
     && typeof ticket.pricePaise === 'number'
     && typeof ticket.currency === 'string'
