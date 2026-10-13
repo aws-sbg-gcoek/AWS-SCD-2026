@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Calendar,
   Building,
@@ -112,6 +112,12 @@ const DISTRICT_COLLEGES: Record<string, string[]> = {
   ],
 };
 
+const ALL_COLLEGES_LIST = Array.from(
+  new Set(Object.values(DISTRICT_COLLEGES).flat())
+)
+  .filter(c => !c.startsWith('Other'))
+  .sort();
+
 const DEGREES = [
   'B.Tech / B.E.',
   'BCA (Bachelor of Computer Applications)',
@@ -152,6 +158,28 @@ export default function RegistrationPage() {
     return () => unsubscribe();
   }, []);
 
+  const [searchParams] = useSearchParams();
+  const [collegeSearchFilter, setCollegeSearchFilter] = useState('');
+
+  // Handle URL query parameters (e.g. ?tab=track&ref=AWS-SCD-XXXXXX&download=true from emails)
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const refParam = searchParams.get('ref') || searchParams.get('utr') || searchParams.get('ticket');
+    if (tabParam === 'track') {
+      setActiveTab('track');
+    }
+    if (refParam) {
+      setActiveTab('track');
+      setTrackQuery(refParam);
+      setTrackSearched(true);
+      findRegistrationAsync(refParam).then((match) => {
+        if (match) {
+          setTrackResult(match);
+        }
+      });
+    }
+  }, [searchParams]);
+
   // Determine active ticket tier (Early Bird ₹249 by default, or Regular ₹349 if open)
   const earlyBirdTier = ticketConfig.tiers.early_bird;
   const regularTier = ticketConfig.tiers.regular;
@@ -174,7 +202,7 @@ export default function RegistrationPage() {
     fullName: '',
     email: '',
     phone: '',
-    district: '',
+    district: 'ALL',
     collegeName: '',
     customCollege: '',
     prnRollNo: '',
@@ -188,6 +216,44 @@ export default function RegistrationPage() {
 
   const selectedTierConfig = ticketConfig.tiers[formData.ticketCode] || earlyBirdTier;
   const activeAmount = selectedTierConfig.price;
+
+  // Filtered colleges list based on district and collegeSearchFilter
+  const availableColleges = useMemo(() => {
+    let list: string[] = [];
+    if (!formData.district || formData.district === 'ALL') {
+      list = ALL_COLLEGES_LIST;
+    } else {
+      list = DISTRICT_COLLEGES[formData.district] || ALL_COLLEGES_LIST;
+    }
+
+    if (collegeSearchFilter.trim()) {
+      const q = collegeSearchFilter.toLowerCase();
+      list = list.filter(c => c.toLowerCase().includes(q));
+    }
+    return list;
+  }, [formData.district, collegeSearchFilter]);
+
+  const handleSelectCollege = (col: string) => {
+    if (col === 'Other / College not listed') {
+      setFormData(prev => ({ ...prev, collegeName: col }));
+      return;
+    }
+    // Auto-detect district if not explicitly selected
+    let detectedDistrict = formData.district;
+    if (!detectedDistrict || detectedDistrict === 'ALL') {
+      for (const [dist, cols] of Object.entries(DISTRICT_COLLEGES)) {
+        if (cols.includes(col)) {
+          detectedDistrict = dist;
+          break;
+        }
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      collegeName: col,
+      district: detectedDistrict || 'Other',
+    }));
+  };
 
   // File Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -256,8 +322,10 @@ export default function RegistrationPage() {
       setValidationError('Please enter a valid student email address.');
       return;
     }
-    if (!formData.phone.trim() || formData.phone.length < 10) {
-      setValidationError('Please enter a valid 10-digit mobile number.');
+    // Strict 10-digit Indian mobile validation
+    const cleanPhone = formData.phone.trim();
+    if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setValidationError('Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).');
       return;
     }
     if (!formData.district) {
@@ -571,6 +639,21 @@ export default function RegistrationPage() {
                   <span>🎓</span> Maharashtra Colleges
                 </span>
               </div>
+
+              {/* Live Ticket Tier & Available Seats Badge */}
+              <div className="pt-1.5 flex items-center justify-center">
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#131D2E] border border-cyan-500/30 text-xs font-mono shadow-sm">
+                  <span className="font-bold text-white">{selectedTierConfig.label}</span>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-emerald-400 font-bold">₹{activeAmount}</span>
+                  <span className="text-slate-500">·</span>
+                  <span className="text-cyan-400 font-semibold">
+                    {selectedTierConfig.remaining > 0
+                      ? `${selectedTierConfig.remaining} Seats Available`
+                      : 'Seats Available'}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Step Indicator & Progress Bar */}
@@ -644,65 +727,118 @@ export default function RegistrationPage() {
                       <label className="block text-xs font-medium text-slate-300 mb-1.5">
                         Mobile Number <span className="text-red-400">*</span>
                       </label>
-                      <input
-                        type="tel"
-                        required
-                        value={formData.phone}
-                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+91 9876543210"
-                        className="w-full bg-[#070B13] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white font-mono text-xs sm:text-sm px-4 py-3 rounded-xl outline-none transition-colors"
-                      />
+                      <div className="relative flex items-center">
+                        <span className="absolute left-3.5 font-mono text-xs text-slate-400 select-none">
+                          +91
+                        </span>
+                        <input
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={e => {
+                            const numeric = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setFormData({ ...formData, phone: numeric });
+                          }}
+                          placeholder="9876543210"
+                          maxLength={10}
+                          className="w-full bg-[#070B13] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white font-mono text-xs sm:text-sm pl-12 pr-4 py-3 rounded-xl outline-none transition-colors"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-mono mt-1 block">
+                        10-digit Indian mobile number for ticket SMS/WhatsApp
+                      </span>
                     </div>
                   </div>
 
                   {/* District & College Name Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                        District <span className="text-red-400">*</span>
-                      </label>
-                      <select
-                        required
-                        value={formData.district}
-                        onChange={e =>
-                          setFormData({
-                            ...formData,
-                            district: e.target.value,
-                            collegeName: '',
-                          })
-                        }
-                        className="w-full bg-[#070B13] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white text-xs sm:text-sm px-4 py-3 rounded-xl outline-none transition-colors cursor-pointer"
-                      >
-                        <option value="">Select District</option>
-                        {Object.keys(DISTRICT_COLLEGES).map(dist => (
-                          <option key={dist} value={dist}>
-                            {dist}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-medium text-slate-300">
+                            District <span className="text-red-400">*</span>
+                          </label>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            Maharashtra
+                          </span>
+                        </div>
+                        <select
+                          required
+                          value={formData.district}
+                          onChange={e =>
+                            setFormData({
+                              ...formData,
+                              district: e.target.value,
+                              collegeName: '',
+                            })
+                          }
+                          className="w-full bg-[#070B13] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white text-xs sm:text-sm px-4 py-3 rounded-xl outline-none transition-colors cursor-pointer"
+                        >
+                          <option value="ALL" className="bg-[#0B1120] text-slate-100 py-1.5">
+                            All Districts / All Maharashtra Colleges
                           </option>
-                        ))}
-                      </select>
-                    </div>
+                          {Object.keys(DISTRICT_COLLEGES).map(dist => (
+                            <option key={dist} value={dist} className="bg-[#0B1120] text-slate-100 py-1.5">
+                              {dist}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                        College Name <span className="text-red-400">*</span>
-                      </label>
-                      <select
-                        required
-                        disabled={!formData.district}
-                        value={formData.collegeName}
-                        onChange={e => setFormData({ ...formData, collegeName: e.target.value })}
-                        className="w-full bg-[#070B13] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white text-xs sm:text-sm px-4 py-3 rounded-xl outline-none transition-colors disabled:opacity-50 cursor-pointer"
-                      >
-                        <option value="">
-                          {formData.district ? 'Select College' : 'Select district first'}
-                        </option>
-                        {formData.district &&
-                          (DISTRICT_COLLEGES[formData.district] || DISTRICT_COLLEGES['Other']).map(col => (
-                            <option key={col} value={col}>
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-medium text-slate-300">
+                            College Name <span className="text-red-400">*</span>
+                          </label>
+                          <span className="text-[10px] text-cyan-400 font-mono font-semibold">
+                            {availableColleges.length} colleges
+                          </span>
+                        </div>
+                        <select
+                          required
+                          value={formData.collegeName}
+                          onChange={e => handleSelectCollege(e.target.value)}
+                          className="w-full bg-[#070B13] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white text-xs sm:text-sm px-4 py-3 rounded-xl outline-none transition-colors cursor-pointer"
+                        >
+                          <option value="" className="bg-[#0B1120] text-slate-400 py-1.5">
+                            Select College Name
+                          </option>
+                          {availableColleges.map(col => (
+                            <option
+                              key={col}
+                              value={col}
+                              title={col}
+                              className="bg-[#0B1120] text-slate-100 py-1.5"
+                            >
                               {col}
                             </option>
                           ))}
-                      </select>
+                          <option value="Other / College not listed" className="bg-[#0B1120] text-amber-300 font-semibold py-1.5">
+                            + Other / College not listed
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Quick College Search Filter Input (allows laptop users to easily search across all colleges) */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3.5 top-3" />
+                      <input
+                        type="text"
+                        value={collegeSearchFilter}
+                        onChange={e => setCollegeSearchFilter(e.target.value)}
+                        placeholder="Type to filter colleges (e.g. Walchand, KIT, Karad, PVPIT, COEP)..."
+                        className="w-full bg-[#070B13]/70 border border-[#243044] focus:border-[#5856D6] text-slate-200 text-xs pl-9 pr-8 py-2.5 rounded-lg outline-none transition-colors font-mono"
+                      />
+                      {collegeSearchFilter && (
+                        <button
+                          type="button"
+                          onClick={() => setCollegeSearchFilter('')}
+                          className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -901,7 +1037,12 @@ export default function RegistrationPage() {
                 <div className="bg-[#070B13] border border-[#243044] rounded-xl p-5 space-y-4 text-xs font-mono">
                   <div className="flex justify-between items-center pb-3 border-b border-[#1E293B]">
                     <span className="text-slate-400">Selected Pass</span>
-                    <strong className="text-white text-sm">{selectedTierConfig.label}</strong>
+                    <div className="text-right">
+                      <strong className="text-white text-sm block">{selectedTierConfig.label}</strong>
+                      <span className="text-[10px] text-cyan-400 font-mono">
+                        {selectedTierConfig.remaining > 0 ? `${selectedTierConfig.remaining} Seats Available` : 'Available'}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">

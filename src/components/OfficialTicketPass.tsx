@@ -495,11 +495,11 @@ export default function OfficialTicketPass({
       ctx.font = 'bold 14px "JetBrains Mono", monospace';
       ctx.fillText(`PRN: ${registration.prnRollNo}`, col1X, row2Y + 68);
 
-      // 6D. FIELD 4: BOOKING ID
-      drawFieldLabel('BOOKING REFERENCE', '#C084FC', col2X, row2Y);
-      ctx.fillStyle = '#FFFFFF';
+      // 6D. FIELD 4: REFERENCE ID (REF)
+      drawFieldLabel('REFERENCE ID', '#C084FC', col2X, row2Y);
+      ctx.fillStyle = '#00D4FF';
       ctx.font = '800 20px "JetBrains Mono", monospace';
-      ctx.fillText(registration.bookingId, col2X, row2Y + 38);
+      ctx.fillText(`Ref: ${registration.bookingId}`, col2X, row2Y + 38);
 
       ctx.fillStyle = '#34D399';
       ctx.font = 'bold 16px "JetBrains Mono", monospace';
@@ -831,13 +831,13 @@ export default function OfficialTicketPass({
               </div>
             </div>
 
-            {/* Middle Vertical Text: Transaction ID / UTR */}
+            {/* Middle Vertical Text: Transaction ID / UTR & Reference ID */}
             <div className="my-auto [writing-mode:vertical-lr] rotate-180 flex items-center gap-2">
-              <span className="font-mono text-[9px] tracking-[0.3em] text-[#00D4FF] uppercase font-black">
-                TRANSACTION ID
+              <span className="font-mono text-[9px] tracking-widest text-[#00D4FF] uppercase font-black">
+                REF: {registration.bookingId}
               </span>
-              <span className="font-mono text-[11px] tracking-wider text-slate-200 font-bold select-all">
-                {registration.transactionId}
+              <span className="font-mono text-[10px] tracking-wider text-slate-200 font-bold select-all">
+                UTR: {registration.transactionId}
               </span>
             </div>
 
@@ -975,14 +975,14 @@ export default function OfficialTicketPass({
                     </div>
                   </div>
 
-                  {/* Field 4: Booking ID */}
+                  {/* Field 4: Reference ID */}
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase text-[#38BDF8] tracking-wider">
                       <CreditCard className="w-3 h-3 text-[#C084FC] shrink-0" />
-                      <span>BOOKING ID</span>
+                      <span>REFERENCE ID</span>
                     </div>
-                    <div className="text-xs font-mono font-bold text-slate-200">
-                      {registration.bookingId}
+                    <div className="text-xs font-mono font-bold text-cyan-300">
+                      Ref: {registration.bookingId}
                     </div>
                     <div className="text-[9px] font-mono text-emerald-400 font-semibold">
                       ₹{registration.amount} · {registration.ticketTier}

@@ -38,8 +38,9 @@ export default function UpiPaymentCard({
   const [screenshotBase64, setScreenshotBase64] = useState<string | null>(null);
   const [screenshotCompressing, setScreenshotCompressing] = useState(false);
   const [screenshotError, setScreenshotError] = useState('');
+  const [utrError, setUtrError] = useState('');
 
-  // Universal UPI Deep Link URL
+  // Universal UPI Deep Link URL (Pre-fills recipient, amount, note in all UPI apps)
   const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
     payeeName
   )}&am=${amount}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
@@ -53,7 +54,8 @@ export default function UpiPaymentCard({
     payeeName
   )}&am=${amount}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
 
-  const paytmLink = `paytmmp://upi/pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
+  // Paytm deep link scheme: paytmmp://pay?pa=... (NOT /upi/pay which causes Paytm to open on home screen without payment window)
+  const paytmLink = `paytmmp://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
     payeeName
   )}&am=${amount}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
 
@@ -110,12 +112,20 @@ export default function UpiPaymentCard({
 
   const handleConfirmUtr = (e: React.FormEvent) => {
     e.preventDefault();
+    setUtrError('');
+
+    const cleanUtr = utrNumber.trim();
+    if (!cleanUtr || cleanUtr.length !== 12 || !/^\d{12}$/.test(cleanUtr)) {
+      setUtrError('Please enter a valid 12-digit numeric UPI UTR / Reference ID (e.g. 428901234567).');
+      return;
+    }
+
     setSubmittingUtr(true);
     setTimeout(() => {
       setSubmittingUtr(false);
       if (onPaymentDone) {
         onPaymentDone(
-          utrNumber || 'UPI-' + Math.floor(100000000000 + Math.random() * 900000000000),
+          cleanUtr,
           screenshotBase64 || undefined,
           screenshotFile?.name || undefined
         );
@@ -257,20 +267,37 @@ export default function UpiPaymentCard({
 
         {/* 1. Transaction ID / UTR Input */}
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
-            UPI Reference No. / 12-Digit UTR <span className="text-slate-500">(Recommended)</span>
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-medium text-slate-300">
+              UPI Reference No. / 12-Digit UTR <span className="text-red-400">*</span>
+            </label>
+            <span className="text-[11px] font-mono text-slate-400">
+              {utrNumber.length}/12 digits
+            </span>
+          </div>
           <input
             type="text"
-            maxLength={18}
+            inputMode="numeric"
+            maxLength={12}
+            required
             value={utrNumber}
-            onChange={e => setUtrNumber(e.target.value.replace(/\s+/g, ''))}
-            placeholder="e.g. 428901234567 or transaction reference"
-            className="w-full bg-[#0B0F19] border border-[#243044] focus:border-[#5856D6] focus:ring-1 focus:ring-[#5856D6] text-white font-mono text-xs sm:text-sm px-4 py-3 rounded-xl outline-none"
+            onChange={e => {
+              const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+              setUtrNumber(digits);
+              if (utrError) setUtrError('');
+            }}
+            placeholder="e.g. 428901234567 (12 digits)"
+            className={`w-full bg-[#0B0F19] border ${
+              utrError ? 'border-red-500 focus:border-red-500' : 'border-[#243044] focus:border-[#5856D6]'
+            } focus:ring-1 focus:ring-[#5856D6] text-white font-mono text-xs sm:text-sm px-4 py-3 rounded-xl outline-none transition-colors`}
           />
-          <p className="text-[11px] text-slate-400 mt-1 font-mono">
-            Visible in your GPay / PhonePe / Paytm receipt immediately after paying.
-          </p>
+          {utrError ? (
+            <p className="text-xs text-red-400 mt-1.5 font-mono">{utrError}</p>
+          ) : (
+            <p className="text-[11px] text-slate-400 mt-1 font-mono">
+              Visible on your GPay, PhonePe, or Paytm success screen as "UPI Ref / UTR / Transaction No." (exact 12 digits).
+            </p>
+          )}
         </div>
 
         {/* 2. Payment Screenshot Upload */}

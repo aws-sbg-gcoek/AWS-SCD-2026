@@ -56,7 +56,7 @@ import {
   Send,
   HelpCircle,
 } from 'lucide-react';
-import { sendTicketEmailViaResend } from '../services/emailService';
+import { sendTicketEmailViaResend, sendRejectionEmail } from '../services/emailService';
 import TicketScanner from '../components/TicketScanner';
 import { resetTicketCheckIn } from '../utils/registrationStore';
 
@@ -260,14 +260,30 @@ export default function TicketAdminPage() {
     }
   };
 
-  const handleRejectTransaction = (id: string) => {
-    const reason = window.prompt('Enter reason for transaction rejection (optional):', 'Invalid or unverified UPI reference number');
+  const handleRejectTransaction = async (id: string) => {
+    const reason = window.prompt(
+      'Enter reason for transaction rejection (this explanation will be emailed to the student):',
+      'UPI reference number could not be matched with bank statements.'
+    );
     if (reason !== null) {
       const updated = updateRegistrationStatus(id, 'REJECTED', reason);
       if (updated) {
         setRegistrations(loadRegistrations());
         if (selectedAttendee?.id === id) {
           setSelectedAttendee(updated);
+        }
+
+        setEmailNotice(`Dispatching rejection email to ${updated.email}...`);
+        try {
+          const res = await sendRejectionEmail(updated, reason);
+          if (res.success) {
+            setEmailNotice(`✓ Rejection email delivered to ${updated.email}`);
+            setTimeout(() => setEmailNotice(''), 7000);
+          } else {
+            setEmailNotice(`⚠️ Status set to REJECTED, but email could not be sent: ${res.error}`);
+          }
+        } catch (err) {
+          setEmailNotice(`⚠️ Rejection email network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       }
     }
@@ -1069,6 +1085,25 @@ export default function TicketAdminPage() {
                             className="w-full bg-[#0B0F19] border border-[#2A374D] text-white font-mono text-sm pl-7 pr-3 py-2 rounded outline-none focus:border-amber-400"
                           />
                         </div>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-mono uppercase text-slate-300">
+                            Available Seats (Capacity)
+                          </label>
+                          <span className="text-[10px] font-mono text-cyan-400 font-bold">
+                            {tier.remaining ?? 0} Seats
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={tier.remaining ?? 0}
+                          onChange={e => updateTier(key, { remaining: Math.max(0, Number(e.target.value) || 0) })}
+                          placeholder="e.g. 150"
+                          className="w-full bg-[#0B0F19] border border-[#2A374D] text-white font-mono text-sm px-3 py-2 rounded outline-none focus:border-cyan-400"
+                        />
                       </div>
 
                       <div>

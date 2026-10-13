@@ -205,6 +205,37 @@ export function generateTicketEmailHtml(student: StudentRegistration): string {
           </tr>
         </table>
 
+        <!-- DOWNLOAD & SAVE PASS ACTIONS (Direct Offline Ticket Download) -->
+        <table width="680" border="0" cellspacing="0" cellpadding="0" style="margin-top: 20px; text-align: center;">
+          <tr>
+            <td align="center">
+              <table border="0" cellspacing="0" cellpadding="0" style="background-color: #09172B; border: 1px solid #1E3A5F; border-radius: 14px; padding: 18px 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); width: 100%;">
+                <tr>
+                  <td align="center">
+                    <p style="margin: 0 0 14px; font-size: 13px; color: #E2E8F0; font-weight: 600;">
+                      Save your official ticket pass now to present at the registration gate on 01 Nov 2026:
+                    </p>
+                    <table border="0" cellspacing="0" cellpadding="0" align="center">
+                      <tr>
+                        <td align="center" style="padding: 4px 8px;">
+                          <a href="https://aws-scd-ticket.vercel.app/register?tab=track&ref=${encodeURIComponent(student.bookingId)}&download=true" target="_blank" style="background: linear-gradient(135deg, #00B4D8 0%, #0077B6 100%); color: #040810; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 13px; text-decoration: none; padding: 12px 24px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 16px rgba(0, 180, 216, 0.35); text-transform: uppercase; letter-spacing: 0.5px;">
+                            ⬇️ Download Official Ticket Pass (PNG)
+                          </a>
+                        </td>
+                        <td align="center" style="padding: 4px 8px;">
+                          <a href="${qrUrl}" target="_blank" download="AWS-SCD-GatePass-${ticketCode}.png" style="background-color: #0E1A2C; border: 1px solid #00B4D8; color: #00D4FF; font-family: monospace; font-weight: 700; font-size: 12px; text-decoration: none; padding: 11px 20px; border-radius: 8px; display: inline-block;">
+                            📱 Save Gate QR Code
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
         <!-- Email Footer Notice -->
         <table width="680" border="0" cellspacing="0" cellpadding="0" style="margin-top: 18px; text-align: center;">
           <tr>
@@ -213,7 +244,7 @@ export function generateTicketEmailHtml(student: StudentRegistration): string {
                 Keep this email handy or save the QR code to your phone gallery. Pass allows strict 1-time gate entry.
               </p>
               <p style="margin: 0; font-size: 10px; color: #475569; font-family: monospace;">
-                AWS Student Community Day Kolhapur 2026 Organizing Committee
+                AWS Student Community Day Kolhapur 2026 Organizing Committee · V.T. Patil Hall, Kolhapur
               </p>
             </td>
           </tr>
@@ -224,6 +255,192 @@ export function generateTicketEmailHtml(student: StudentRegistration): string {
 </body>
 </html>
   `.trim();
+}
+
+/**
+ * Generates professional HTML email template for rejected registrations
+ */
+export function generateRejectionEmailHtml(
+  student: StudentRegistration,
+  reason?: string
+): string {
+  const actualReason =
+    reason ||
+    student.rejectionReason ||
+    'The submitted UPI transaction reference could not be matched with event bank statements.';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Update: AWS Student Community Day Kolhapur 2026</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #030712; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #FFFFFF;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #030712; padding: 30px 10px;">
+    <tr>
+      <td align="center">
+        <table width="640" border="0" cellspacing="0" cellpadding="0" style="background-color: #0A101D; border-radius: 16px; border: 2px solid #EF4444; overflow: hidden; box-shadow: 0 0 35px rgba(239, 68, 68, 0.25);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 24px 30px; background: linear-gradient(135deg, #1A0D15 0%, #0A101D 100%); border-bottom: 1px solid #2A1724;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <span style="font-size: 24px; font-weight: 900; color: #FFFFFF;">aws</span>
+                    <span style="font-size: 11px; font-weight: 800; color: #FF9900; letter-spacing: 1px; margin-left: 8px; text-transform: uppercase;">
+                      STUDENT COMMUNITY DAY KOLHAPUR
+                    </span>
+                  </td>
+                  <td align="right">
+                    <span style="background-color: #450A0A; border: 1px solid #EF4444; color: #FCA5A5; font-family: monospace; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; text-transform: uppercase;">
+                      VERIFICATION REJECTED
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding: 30px; line-height: 1.6;">
+              <h2 style="margin: 0 0 12px; font-size: 18px; color: #FFFFFF;">
+                Hello ${student.fullName},
+              </h2>
+              <p style="margin: 0 0 18px; font-size: 14px; color: #CBD5E1;">
+                We reviewed your registration for <strong>AWS Student Community Day Kolhapur 2026</strong>, but we were unable to verify your payment transaction.
+              </p>
+
+              <!-- Reason Box -->
+              <div style="background-color: #17121E; border-left: 4px solid #EF4444; padding: 14px 18px; border-radius: 6px; margin-bottom: 22px;">
+                <p style="margin: 0 0 4px; font-size: 11px; font-family: monospace; color: #F87171; text-transform: uppercase; font-weight: 700;">
+                  REASON FOR REJECTION:
+                </p>
+                <p style="margin: 0; font-size: 13px; color: #FFFFFF; font-weight: 600;">
+                  ${actualReason}
+                </p>
+              </div>
+
+              <!-- Submitted Details Review -->
+              <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #060B14; border: 1px solid #1E293B; border-radius: 10px; padding: 16px; margin-bottom: 22px; font-family: monospace; font-size: 12px;">
+                <tr>
+                  <td style="color: #64748B; padding: 4px 0;">REFERENCE ID:</td>
+                  <td style="color: #00D4FF; font-weight: 700; padding: 4px 0;">${student.bookingId}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748B; padding: 4px 0;">SUBMITTED UTR:</td>
+                  <td style="color: #FFFFFF; font-weight: 700; padding: 4px 0;">${student.transactionId}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748B; padding: 4px 0;">TIER / AMOUNT:</td>
+                  <td style="color: #FBBF24; font-weight: 700; padding: 4px 0;">₹${student.amount} (${student.ticketTier})</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748B; padding: 4px 0;">COLLEGE:</td>
+                  <td style="color: #E2E8F0; padding: 4px 0;">${student.collegeName}</td>
+                </tr>
+              </table>
+
+              <h4 style="margin: 0 0 8px; font-size: 13px; color: #38BDF8;">What Should You Do Next?</h4>
+              <ul style="margin: 0 0 24px; padding-left: 20px; font-size: 13px; color: #94A3B8;">
+                <li style="margin-bottom: 6px;">If your UPI transaction was successful, check your GPay / PhonePe / Paytm receipt for the <strong>12-digit numeric UTR</strong> and re-submit your registration with the correct reference.</li>
+                <li style="margin-bottom: 6px;">If the payment was debited from your bank account, reply directly to this email with your transaction screenshot or contact us at <a href="mailto:Awssbggcoek@gmail.com" style="color: #38BDF8; text-decoration: underline;">Awssbggcoek@gmail.com</a>.</li>
+              </ul>
+
+              <!-- Re-register CTA -->
+              <div style="text-align: center; margin: 24px 0 12px;">
+                <a href="https://aws-scd-ticket.vercel.app/register" target="_blank" style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFFFFF; font-weight: 700; font-size: 13px; text-decoration: none; padding: 13px 26px; border-radius: 8px; display: inline-block;">
+                  Re-Submit Registration with Correct UTR →
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 16px; background-color: #050811; border-top: 1px solid #1A2436; text-align: center; font-size: 11px; color: #64748B;">
+              AWS Student Community Day Kolhapur 2026 Organizing Committee · V.T. Patil Hall, Kolhapur
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
+
+/**
+ * Sends rejection notification email
+ */
+export async function sendRejectionEmail(
+  student: StudentRegistration,
+  reason?: string,
+  apiKey?: string,
+  fromEmail?: string
+): Promise<SendEmailResult> {
+  const localGmailUser = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_GMAIL_USER') || '' : '';
+  const localGmailPass = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_GMAIL_PASS') || '' : '';
+  const localResendKey = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_RESEND_KEY') || '' : '';
+  const localFromEmail = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_FROM_EMAIL') || '' : '';
+
+  const gmailUser = localGmailUser || import.meta.env.VITE_GMAIL_USER || '';
+  const gmailPass = localGmailPass || import.meta.env.VITE_GMAIL_APP_PASSWORD || '';
+  const activeKey = apiKey || localResendKey || import.meta.env.VITE_RESEND_API_KEY || '';
+
+  const sender =
+    fromEmail ||
+    localFromEmail ||
+    import.meta.env.VITE_RESEND_FROM_EMAIL ||
+    (gmailUser ? gmailUser : 'onboarding@resend.dev');
+
+  if (!gmailUser && !activeKey) {
+    return {
+      success: false,
+      error: 'No email service configured. Set up your Gmail sender in the Admin Panel or .env.local.',
+    };
+  }
+
+  const html = generateRejectionEmailHtml(student, reason);
+
+  try {
+    const response = await fetch('/api/send-ticket-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gmailUser,
+        gmailPass,
+        apiKey: activeKey,
+        from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
+        to: student.email,
+        subject: `⚠️ Payment Verification Update - AWS Student Community Day 2026 (${student.bookingId})`,
+        html: html,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || 'Failed to dispatch rejection email',
+      };
+    }
+
+    return {
+      success: true,
+      messageId: data.id,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Unknown network error',
+    };
+  }
 }
 
 /**

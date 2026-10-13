@@ -16,6 +16,7 @@ import {
   subscribeToTicketConfig,
   getTierEffectiveStatus,
 } from './utils/ticketConfig';
+import { subscribeToRegistrations, StudentRegistration } from './utils/registrationStore';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -96,6 +97,33 @@ export default function App() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [ticketConfig, setTicketConfig] = useState<TicketSystemConfig>(() => loadTicketConfig());
   const [checkoutTicket, setCheckoutTicket] = useState<TicketAvailability | null>(null);
+
+  // Real-time synchronization of registrations and live approved attendee counter
+  const [registrations, setRegistrations] = useState<StudentRegistration[]>([]);
+  const [approvedCount, setApprovedCount] = useState<number>(0);
+
+  useEffect(() => {
+    const unsubscribeRegistrations = subscribeToRegistrations((records) => {
+      setRegistrations(records);
+      const approved = records.filter(r => r.status === 'APPROVED').length;
+      setApprovedCount(approved);
+      setStatAttendees(approved);
+    });
+    return () => unsubscribeRegistrations();
+  }, []);
+
+  const getTierRemainingSeats = (code: TicketCode) => {
+    const tier = ticketConfig.tiers[code];
+    const approvedInTier = registrations.filter(r => {
+      if (r.status !== 'APPROVED') return false;
+      const t = (r.ticketTier || '').toLowerCase();
+      if (code === 'super_early_bird') return t.includes('super early');
+      if (code === 'early_bird') return t.includes('early bird') && !t.includes('super');
+      if (code === 'regular') return t.includes('regular');
+      return false;
+    }).length;
+    return Math.max(0, (tier.remaining ?? 0) - approvedInTier);
+  };
 
   // Sync ticket configuration in real-time with Firestore & Admin changes
   useEffect(() => {
@@ -213,20 +241,28 @@ export default function App() {
 
   // 4. Stats Count-up Effect
   useEffect(() => {
+    // Immediately trigger when intro dismissed or hero visible
+    const triggerStatsAnimation = () => {
+      if (!hasCountedStats) {
+        setHasCountedStats(true);
+        animateValue(0, approvedCount, 1200, setStatAttendees);
+        animateValue(0, 15, 1200, setStatSpeakers);
+        animateValue(0, 12, 1000, setStatSessions);
+      }
+    };
+
+    if (!showIntro) {
+      triggerStatsAnimation();
+    }
+
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry.isIntersecting && !hasCountedStats) {
-          setHasCountedStats(true);
-          // Animate attendees to 500
-          animateValue(0, 500, 1600, setStatAttendees);
-          // Animate speakers to 15
-          animateValue(0, 15, 1200, setStatSpeakers);
-          // Animate sessions to 12
-          animateValue(0, 12, 1000, setStatSessions);
+        if (entry.isIntersecting) {
+          triggerStatsAnimation();
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.1 }
     );
 
     if (heroRef.current) {
@@ -234,7 +270,12 @@ export default function App() {
     }
 
     return () => observer.disconnect();
-  }, [hasCountedStats]);
+  }, [hasCountedStats, showIntro, approvedCount]);
+
+  // Continuously ensure statAttendees matches approvedCount live
+  useEffect(() => {
+    setStatAttendees(approvedCount);
+  }, [approvedCount]);
 
   function animateValue(start: number, end: number, duration: number, setter: (val: number) => void) {
     const startTime = performance.now();
@@ -1135,7 +1176,12 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.super_early_bird.price}</span>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.super_early_bird.price}</span>
+                    <span className="bg-slate-800/90 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold px-2.5 py-1 rounded-md">
+                      {getTierRemainingSeats('super_early_bird')} Seats Available
+                    </span>
+                  </div>
                   <p className="font-mono text-[11px] text-[#06B6D4] mt-2 leading-relaxed">
                     {ticketConfig.tiers.super_early_bird.dateDescription || 'Available Till: 17th Sep 2026, 06:36 PM (GMT+05:30)'}
                   </p>
@@ -1196,7 +1242,12 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.early_bird.price}</span>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.early_bird.price}</span>
+                    <span className="bg-cyan-950/90 border border-cyan-500/50 text-cyan-300 font-mono text-[11px] font-bold px-2.5 py-1 rounded-md">
+                      {getTierRemainingSeats('early_bird')} Seats Available
+                    </span>
+                  </div>
                   <p className="font-mono text-[11px] text-[#06B6D4] mt-2 leading-relaxed">
                     {ticketConfig.tiers.early_bird.dateDescription || 'Available until: 22nd Oct 2026, 05:54 PM IST'}
                   </p>
@@ -1255,7 +1306,12 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 pb-6 border-b border-white/15">
-                  <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.regular.price}</span>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-4xl sm:text-5xl font-mono font-bold text-white">₹{ticketConfig.tiers.regular.price}</span>
+                    <span className="bg-slate-800/90 border border-slate-700 text-slate-300 font-mono text-[11px] font-bold px-2.5 py-1 rounded-md">
+                      {getTierRemainingSeats('regular')} Seats Available
+                    </span>
+                  </div>
                   <p className="font-mono text-[11px] text-[#06B6D4] mt-2 leading-relaxed">
                     {ticketConfig.tiers.regular.dateDescription || 'Available from: 22nd Oct 2026, 05:54 PM IST'}
                   </p>
