@@ -373,6 +373,9 @@ export function generateRejectionEmailHtml(
   `.trim();
 }
 
+const DEFAULT_GMAIL_USER = 'Awssbggcoek@gmail.com';
+const DEFAULT_GMAIL_PASS = 'uoepgjczzkohretv';
+
 /**
  * Sends rejection notification email
  */
@@ -387,8 +390,8 @@ export async function sendRejectionEmail(
   const localResendKey = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_RESEND_KEY') || '' : '';
   const localFromEmail = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_FROM_EMAIL') || '' : '';
 
-  const gmailUser = localGmailUser || import.meta.env.VITE_GMAIL_USER || '';
-  const gmailPass = localGmailPass || import.meta.env.VITE_GMAIL_APP_PASSWORD || '';
+  const gmailUser = localGmailUser || import.meta.env.VITE_GMAIL_USER || DEFAULT_GMAIL_USER;
+  const gmailPass = localGmailPass || import.meta.env.VITE_GMAIL_APP_PASSWORD || DEFAULT_GMAIL_PASS;
   const activeKey = apiKey || localResendKey || import.meta.env.VITE_RESEND_API_KEY || '';
 
   const sender =
@@ -444,7 +447,7 @@ export async function sendRejectionEmail(
 }
 
 /**
- * Sends confirmation email using Resend API
+ * Sends confirmation email using Resend API or Gmail
  */
 export async function sendTicketEmailViaResend(
   student: StudentRegistration,
@@ -456,8 +459,8 @@ export async function sendTicketEmailViaResend(
   const localResendKey = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_RESEND_KEY') || '' : '';
   const localFromEmail = typeof window !== 'undefined' ? localStorage.getItem('AWS_ADMIN_FROM_EMAIL') || '' : '';
 
-  const gmailUser = localGmailUser || import.meta.env.VITE_GMAIL_USER || '';
-  const gmailPass = localGmailPass || import.meta.env.VITE_GMAIL_APP_PASSWORD || '';
+  const gmailUser = localGmailUser || import.meta.env.VITE_GMAIL_USER || DEFAULT_GMAIL_USER;
+  const gmailPass = localGmailPass || import.meta.env.VITE_GMAIL_APP_PASSWORD || DEFAULT_GMAIL_PASS;
   const activeKey = apiKey || localResendKey || import.meta.env.VITE_RESEND_API_KEY || '';
 
   const sender =

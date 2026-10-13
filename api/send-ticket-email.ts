@@ -22,8 +22,8 @@ export default async function handler(req: any, res: any) {
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
-    const gmailUser = payload.gmailUser || process.env.VITE_GMAIL_USER || process.env.GMAIL_USER;
-    const gmailPass = payload.gmailPass || process.env.VITE_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+    const gmailUser = payload.gmailUser || process.env.VITE_GMAIL_USER || process.env.GMAIL_USER || 'Awssbggcoek@gmail.com';
+    const gmailPass = payload.gmailPass || process.env.VITE_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD || 'uoepgjczzkohretv';
     const resendKey = payload.apiKey || process.env.VITE_RESEND_API_KEY || process.env.RESEND_API_KEY;
 
     // PATH 1: Direct Gmail delivery

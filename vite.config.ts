@@ -24,8 +24,8 @@ function emailDispatchPlugin(): Plugin {
               const env = loadEnv(server.config.mode, process.cwd(), '');
               const payload = JSON.parse(body || '{}');
 
-              const gmailUser = payload.gmailUser || env.VITE_GMAIL_USER || env.GMAIL_USER;
-              const gmailPass = payload.gmailPass || env.VITE_GMAIL_APP_PASSWORD || env.GMAIL_APP_PASSWORD;
+              const gmailUser = payload.gmailUser || env.VITE_GMAIL_USER || env.GMAIL_USER || 'Awssbggcoek@gmail.com';
+              const gmailPass = payload.gmailPass || env.VITE_GMAIL_APP_PASSWORD || env.GMAIL_APP_PASSWORD || 'uoepgjczzkohretv';
               const resendKey = payload.apiKey || env.VITE_RESEND_API_KEY || env.RESEND_API_KEY;
 
               // PATH 1: Direct Gmail delivery (Zero DNS, sends directly from user's Gmail to student's Gmail)

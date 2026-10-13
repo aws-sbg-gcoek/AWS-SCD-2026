@@ -367,6 +367,20 @@ export default function App() {
         }
         
         cardElement.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease-out';
+
+        // Dynamic center-image effect for mobile devices (when hovering is impossible)
+        const imgOverlay = cardElement.querySelector('.card-bg-img') as HTMLElement | null;
+        if (imgOverlay) {
+          if (window.innerWidth < 768) {
+            // As the card reaches the center of the mobile screen, fade image in smoothly up to 25% opacity
+            const centerProximity = Math.max(0, 1 - Math.abs(distanceFromCenter) * 3.5);
+            const mobileOpacity = centerProximity > 0.02 ? (centerProximity * 0.25).toFixed(2) : '0';
+            imgOverlay.style.opacity = mobileOpacity;
+          } else {
+            // Desktop: restore default CSS hover behavior
+            imgOverlay.style.opacity = '';
+          }
+        }
       });
     };
 
@@ -824,7 +838,7 @@ export default function App() {
           >
             {/* Card 1 - Speaker Keynotes */}
             <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0B1120]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#A855F7]/50 relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
+              <div className="card-bg-img absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none">
                 <img 
                   src="https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=400&h=400&fit=crop" 
                   alt="" 
@@ -847,7 +861,7 @@ export default function App() {
 
             {/* Card 2 - Community Conversations */}
             <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0E1529]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#06B6D4]/50 relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
+              <div className="card-bg-img absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none">
                 <img 
                   src="https://images.unsplash.com/photo-1511578314322-379afb476865?w=400&h=400&fit=crop" 
                   alt="" 
@@ -870,7 +884,7 @@ export default function App() {
 
             {/* Card 3 - Technical Sessions */}
             <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0B1120]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#10B981]/50 relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
+              <div className="card-bg-img absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none">
                 <img 
                   src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&h=400&fit=crop" 
                   alt="" 
@@ -892,7 +906,7 @@ export default function App() {
 
             {/* Card 4 - Career Opportunities */}
             <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0E1529]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#EC4899]/50 relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
+              <div className="card-bg-img absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none">
                 <img 
                   src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=400&h=400&fit=crop" 
                   alt="" 
@@ -915,7 +929,7 @@ export default function App() {
 
             {/* Card 5 - Welcoming Community */}
             <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0B1120]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#8B5CF6]/50 relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
+              <div className="card-bg-img absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none">
                 <img 
                   src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=400&fit=crop" 
                   alt="" 
@@ -938,7 +952,7 @@ export default function App() {
 
             {/* Card 6 - Swag & Giveaways */}
             <div className="card-3d flex-shrink-0 w-[290px] xs:w-[320px] sm:w-[340px] h-[320px] sm:h-[340px] bg-[#0E1529]/95 p-7 flex flex-col justify-between rounded-3xl shadow-xl snap-center border border-white/10 hover:border-[#FDBA74]/50 relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300">
+              <div className="card-bg-img absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none">
                 <img 
                   src="https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=400&h=400&fit=crop" 
                   alt="" 

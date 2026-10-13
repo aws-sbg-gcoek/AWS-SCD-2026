@@ -205,6 +205,19 @@ export default function TicketAdminPage() {
     }
   };
 
+  const handleSendRejectionEmail = async (student: StudentRegistration) => {
+    setIsSendingEmail(true);
+    setEmailNotice(`Dispatching rejection email to ${student.email}...`);
+    const res = await sendRejectionEmail(student, student.rejectionReason);
+    setIsSendingEmail(false);
+    if (res.success) {
+      setEmailNotice(`✅ Rejection email delivered to ${student.email}`);
+      setTimeout(() => setEmailNotice(''), 7000);
+    } else {
+      setEmailNotice(`❌ Failed to send rejection email: ${res.error || 'Check sender configuration'}`);
+    }
+  };
+
   const handleSaveEmailSettings = () => {
     localStorage.setItem('AWS_ADMIN_GMAIL_USER', senderGmailUser.trim());
     localStorage.setItem('AWS_ADMIN_GMAIL_PASS', senderGmailPass.trim().replace(/\s+/g, ''));
@@ -922,14 +935,26 @@ export default function TicketAdminPage() {
                                 )}
 
                                 {isRejected && (
-                                  <button
-                                    type="button"
-                                    disabled={approvingId === reg.id}
-                                    onClick={() => handleApproveTransaction(reg.id)}
-                                    className="bg-emerald-950 border border-emerald-700 text-emerald-300 px-2 py-1 rounded text-[10px] hover:bg-emerald-900 cursor-pointer"
-                                  >
-                                    {approvingId === reg.id ? 'Approving…' : 'Re-approve'}
-                                  </button>
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={isSendingEmail}
+                                      onClick={() => handleSendRejectionEmail(reg)}
+                                      className="bg-red-950/80 hover:bg-red-900 border border-red-700/60 text-red-300 px-2 py-1.5 rounded text-[10px] font-mono flex items-center gap-1 transition-colors cursor-pointer"
+                                      title={`Email rejection notice to ${reg.email}`}
+                                    >
+                                      <Mail className="w-3 h-3 text-red-400" />
+                                      <span>Email Rejection</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={approvingId === reg.id}
+                                      onClick={() => handleApproveTransaction(reg.id)}
+                                      className="bg-emerald-950 border border-emerald-700 text-emerald-300 px-2 py-1.5 rounded text-[10px] hover:bg-emerald-900 cursor-pointer"
+                                    >
+                                      {approvingId === reg.id ? 'Approving…' : 'Re-approve'}
+                                    </button>
+                                  </div>
                                 )}
 
                                 <button
@@ -1463,6 +1488,19 @@ export default function TicketAdminPage() {
                   >
                     <Mail className="w-3.5 h-3.5" />
                     <span>{isSendingEmail ? 'Sending…' : 'Email Ticket Pass'}</span>
+                  </button>
+                )}
+
+                {selectedAttendee.status === 'REJECTED' && (
+                  <button
+                    type="button"
+                    disabled={isSendingEmail}
+                    onClick={() => handleSendRejectionEmail(selectedAttendee)}
+                    className="bg-red-950 hover:bg-red-900 border border-red-700 text-red-200 font-mono text-xs px-4 py-3 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+                    title="Send rejection notification email to student"
+                  >
+                    <Mail className="w-3.5 h-3.5 text-red-400" />
+                    <span>{isSendingEmail ? 'Sending…' : 'Resend Rejection Email'}</span>
                   </button>
                 )}
 
