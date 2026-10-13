@@ -218,7 +218,7 @@ export function generateTicketEmailHtml(student: StudentRegistration): string {
                     <table border="0" cellspacing="0" cellpadding="0" align="center">
                       <tr>
                         <td align="center" style="padding: 4px 8px;">
-                          <a href="https://aws-scd-2026.vercel.app/register?tab=track&ref=${encodeURIComponent(student.bookingId)}&download=true" target="_blank" style="background: linear-gradient(135deg, #00B4D8 0%, #0077B6 100%); color: #040810; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 13px; text-decoration: none; padding: 12px 24px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 16px rgba(0, 180, 216, 0.35); text-transform: uppercase; letter-spacing: 0.5px;">
+                          <a href="https://aws-scd-2026-public.vercel.app/register?tab=track&ref=${encodeURIComponent(student.bookingId)}&download=true" target="_blank" style="background: linear-gradient(135deg, #00B4D8 0%, #0077B6 100%); color: #040810; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; font-size: 13px; text-decoration: none; padding: 12px 24px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 16px rgba(0, 180, 216, 0.35); text-transform: uppercase; letter-spacing: 0.5px;">
                             ⬇️ Download Official Ticket Pass (PNG)
                           </a>
                         </td>
@@ -350,14 +350,11 @@ export function generateRejectionEmailHtml(
               </ul>
 
               <!-- Re-register CTA -->
-              <div style="text-align: center; margin: 24px 0 14px;">
-                <a href="https://aws-scd-ticket.vercel.app/" target="_blank" style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFFFFF; font-weight: 700; font-size: 13px; text-decoration: none; padding: 13px 26px; border-radius: 8px; display: inline-block;">
+              <div style="text-align: center; margin: 26px 0 16px;">
+                <a href="https://aws-scd-2026-public.vercel.app/register" target="_blank" style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFFFFF; font-weight: 700; font-size: 13px; text-decoration: none; padding: 14px 28px; border-radius: 8px; display: inline-block; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
                   Re-Submit Registration with Correct UTR →
                 </a>
               </div>
-              <p style="text-align: center; margin: 0 0 16px; font-size: 11px; color: #64748B;">
-                Main Portal Registration: <a href="https://aws-scd-2026.vercel.app/register" target="_blank" style="color: #38BDF8; text-decoration: underline;">aws-scd-2026.vercel.app/register</a>
-              </p>
             </td>
           </tr>
 
@@ -400,8 +397,7 @@ SUBMITTED REGISTRATION DETAILS:
 
 WHAT YOU SHOULD DO NEXT:
 1. If your UPI transaction was successful, check your GPay / PhonePe / Paytm receipt for the 12-digit numeric UTR and re-submit your registration at:
-   https://aws-scd-ticket.vercel.app/
-   (Or via: https://aws-scd-2026.vercel.app/register)
+   https://aws-scd-2026-public.vercel.app/register
 
 2. If money was deducted from your account, reply directly to this email or write to us at Awssbggcoek@gmail.com with your transaction receipt.
 
