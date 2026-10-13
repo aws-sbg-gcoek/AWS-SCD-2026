@@ -373,8 +373,131 @@ export function generateRejectionEmailHtml(
   `.trim();
 }
 
+export function generateRejectionEmailText(
+  student: StudentRegistration,
+  reason?: string
+): string {
+  const actualReason =
+    reason ||
+    student.rejectionReason ||
+    'The submitted UPI transaction reference could not be matched with event bank statements.';
+
+  return `Hello ${student.fullName},
+
+We reviewed your registration for AWS Student Community Day Kolhapur 2026, but were unable to verify your payment.
+
+REASON FOR REJECTION:
+${actualReason}
+
+SUBMITTED REGISTRATION DETAILS:
+- Reference ID: ${student.bookingId}
+- Submitted UTR: ${student.transactionId}
+- Ticket Tier: ${student.ticketTier} (₹${student.amount})
+- College: ${student.collegeName}
+
+WHAT YOU SHOULD DO NEXT:
+1. If your UPI transaction was successful, check your GPay / PhonePe / Paytm receipt for the 12-digit numeric UTR and re-submit your registration at:
+   https://aws-scd-ticket.vercel.app/register
+
+2. If money was deducted from your account, reply directly to this email or write to us at Awssbggcoek@gmail.com with your transaction receipt.
+
+Best regards,
+AWS Student Community Day Kolhapur 2026 Organizing Committee
+V.T. Patil Hall, Kolhapur
+`;
+}
+
 const DEFAULT_GMAIL_USER = 'Awssbggcoek@gmail.com';
 const DEFAULT_GMAIL_PASS = 'uoepgjczzkohretv';
+const DEDICATED_PROD_API = 'https://aws-scd-admin-2026.vercel.app/api/send-ticket-email';
+
+/**
+ * Resilient multi-tier email dispatcher:
+ * 1. Current origin /api/send-ticket-email
+ * 2. Guaranteed production serverless API: https://aws-scd-admin-2026.vercel.app/api/send-ticket-email
+ * 3. Direct Resend API fallback
+ */
+async function dispatchEmailWithFallbacks(payload: {
+  gmailUser: string;
+  gmailPass: string;
+  apiKey: string;
+  from: string;
+  to: string;
+  subject: string;
+  text?: string;
+  html: string;
+}): Promise<SendEmailResult> {
+  let lastError = '';
+
+  // Tier 1: Relative API route (works in local dev & primary deployment)
+  try {
+    const res = await fetch('/api/send-ticket-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, messageId: data.id };
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      lastError = errData.message || errData.error || `HTTP ${res.status}`;
+    }
+  } catch (err) {
+    lastError = err instanceof Error ? err.message : 'Relative API route unavailable';
+  }
+
+  // Tier 2: Dedicated production serverless backend
+  try {
+    const res = await fetch(DEDICATED_PROD_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, messageId: data.id };
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      lastError = errData.message || errData.error || `Production HTTP ${res.status}`;
+    }
+  } catch (err) {
+    lastError = err instanceof Error ? err.message : 'Dedicated production API error';
+  }
+
+  // Tier 3: Direct Resend API
+  if (payload.apiKey) {
+    try {
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${payload.apiKey}`,
+        },
+        body: JSON.stringify({
+          from: payload.from,
+          to: [payload.to],
+          subject: payload.subject,
+          text: payload.text,
+          html: payload.html,
+        }),
+      });
+      const data = await resendRes.json();
+      if (resendRes.ok) {
+        return { success: true, messageId: data.id };
+      } else {
+        lastError = data.message || data.error || `Resend HTTP ${resendRes.status}`;
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : 'Resend API error';
+    }
+  }
+
+  return {
+    success: false,
+    error: lastError || 'Failed to dispatch email across all delivery providers',
+  };
+}
 
 /**
  * Sends rejection notification email
@@ -408,42 +531,18 @@ export async function sendRejectionEmail(
   }
 
   const html = generateRejectionEmailHtml(student, reason);
+  const text = generateRejectionEmailText(student, reason);
 
-  try {
-    const response = await fetch('/api/send-ticket-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        gmailUser,
-        gmailPass,
-        apiKey: activeKey,
-        from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
-        to: student.email,
-        subject: `⚠️ Payment Verification Update - AWS Student Community Day 2026 (${student.bookingId})`,
-        html: html,
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        error: data.message || data.error || 'Failed to dispatch rejection email',
-      };
-    }
-
-    return {
-      success: true,
-      messageId: data.id,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'Unknown network error',
-    };
-  }
+  return dispatchEmailWithFallbacks({
+    gmailUser,
+    gmailPass,
+    apiKey: activeKey,
+    from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
+    to: student.email,
+    subject: `Registration Verification Update: AWS Student Community Day Kolhapur 2026 (${student.bookingId})`,
+    text,
+    html,
+  });
 }
 
 /**
@@ -477,64 +576,16 @@ export async function sendTicketEmailViaResend(
   }
 
   const html = generateTicketEmailHtml(student);
+  const text = `Congratulations ${student.fullName}!\n\nYour registration for AWS Student Community Day Kolhapur 2026 is confirmed!\nTicket Pass Code: ${student.ticketCode || student.bookingId}\nBooking ID: ${student.bookingId}\nTier: ${student.ticketTier}\nCollege: ${student.collegeName}\n\nVenue: V.T. Patil Hall, Kolhapur\nDate: Saturday, October 24, 2026\n\nPlease present this ticket pass QR code at the check-in desk.`;
 
-  // We route through local server endpoint /api/send-ticket-email to avoid browser CORS restrictions
-  try {
-    let response: Response;
-    try {
-      response = await fetch('/api/send-ticket-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gmailUser,
-          gmailPass,
-          apiKey: activeKey,
-          from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
-          to: student.email,
-          subject: `🎟️ Your Ticket Pass for AWS Student Community Day 2026 (${student.ticketCode || student.bookingId})`,
-          html: html,
-        }),
-      });
-    } catch {
-      // Fallback to direct proxy route if available
-      response = await fetch('/api/resend/emails', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${activeKey}`,
-        },
-        body: JSON.stringify({
-          from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
-          to: [student.email],
-          subject: `🎟️ Your Ticket Pass for AWS Student Community Day 2026 (${student.ticketCode || student.bookingId})`,
-          html: html,
-        }),
-      });
-    }
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      let errorMsg = data.message || data.error || `Failed to send email (HTTP ${response.status})`;
-      if (typeof errorMsg === 'string' && errorMsg.includes('only send testing emails')) {
-        errorMsg = `Resend Free Sandbox: Can only deliver to your Resend account email until you verify your domain at resend.com/domains (${errorMsg})`;
-      }
-      return {
-        success: false,
-        error: errorMsg,
-      };
-    }
-
-    return {
-      success: true,
-      messageId: data.id,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'Unknown network error',
-    };
-  }
+  return dispatchEmailWithFallbacks({
+    gmailUser,
+    gmailPass,
+    apiKey: activeKey,
+    from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
+    to: student.email,
+    subject: `🎟️ Your Ticket Pass: AWS Student Community Day Kolhapur 2026 (${student.ticketCode || student.bookingId})`,
+    text,
+    html,
+  });
 }

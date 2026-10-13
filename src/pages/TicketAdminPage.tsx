@@ -60,6 +60,71 @@ import { sendTicketEmailViaResend, sendRejectionEmail } from '../services/emailS
 import TicketScanner from '../components/TicketScanner';
 import { resetTicketCheckIn } from '../utils/registrationStore';
 
+export interface RejectionReasonOption {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  badge: string;
+  defaultText: string;
+}
+
+export const REJECTION_REASONS: RejectionReasonOption[] = [
+  {
+    id: 'DUPLICATE_UTR',
+    title: 'Repeated / Duplicate Transaction (UTR) ID',
+    subtitle: 'This 12-digit UTR has already been submitted for another registration',
+    icon: '🔁',
+    badge: 'Duplicate UTR',
+    defaultText:
+      'The submitted 12-digit UPI / UTR transaction reference has already been recorded for another student registration. Each attendee must submit a unique transaction reference.',
+  },
+  {
+    id: 'INVALID_UTR',
+    title: 'Invalid or Unverifiable Transaction ID',
+    subtitle: 'Reference not found in bank account or incorrect digits',
+    icon: '❌',
+    badge: 'Invalid UTR',
+    defaultText:
+      'The submitted 12-digit UPI / UTR transaction reference could not be matched with any credit in our official event bank statements. Please verify the reference from your UPI app receipt.',
+  },
+  {
+    id: 'INCORRECT_AMOUNT',
+    title: 'Incorrect Payment Amount',
+    subtitle: 'Paid amount does not match ticket tier price (₹99 / ₹149 / ₹249)',
+    icon: '📉',
+    badge: 'Mismatch Amount',
+    defaultText:
+      'The payment amount received does not match the official registration fee for your selected ticket tier. Please ensure the exact amount is transferred.',
+  },
+  {
+    id: 'UNCLEAR_PROOF',
+    title: 'Unclear, Cropped, or Incomplete Screenshot',
+    subtitle: 'Cannot read UTR number, date, time, or payment status from image',
+    icon: '📷',
+    badge: 'Blurry Screenshot',
+    defaultText:
+      'The uploaded payment screenshot is blurry, cropped, or does not clearly display the 12-digit bank UTR reference, payment date, and transaction timestamp.',
+  },
+  {
+    id: 'PAYMENT_PENDING_FAILED',
+    title: 'Payment Pending or Failed at Bank',
+    subtitle: 'Transaction status shows failed, reversed, or pending bank clearance',
+    icon: '⏳',
+    badge: 'Bank Pending',
+    defaultText:
+      'The transaction appears as failed, reversed, or pending clearance in banking records. If funds were debited from your bank account, please check with your UPI app or bank for a refund.',
+  },
+  {
+    id: 'CUSTOM',
+    title: 'Custom Reason',
+    subtitle: 'Type a specific custom explanation for this student',
+    icon: '✍️',
+    badge: 'Custom Note',
+    defaultText: '',
+  },
+];
+
 export default function TicketAdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem(ADMIN_AUTH_KEY) === 'true';
@@ -85,6 +150,13 @@ export default function TicketAdminPage() {
   const [emailNotice, setEmailNotice] = useState<string>('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  // Rejection Dialog State with 5+ preset reasons
+  const [rejectingStudent, setRejectingStudent] = useState<StudentRegistration | null>(null);
+  const [selectedReasonId, setSelectedReasonId] = useState<string>('DUPLICATE_UTR');
+  const [rejectionExplanation, setRejectionExplanation] = useState<string>(REJECTION_REASONS[0].defaultText);
+  const [shouldEmailStudent, setShouldEmailStudent] = useState<boolean>(true);
+  const [isSubmittingRejection, setIsSubmittingRejection] = useState<boolean>(false);
 
   // Email Dispatch Settings State
   const [showEmailSettingsModal, setShowEmailSettingsModal] = useState(false);
@@ -205,16 +277,81 @@ export default function TicketAdminPage() {
     }
   };
 
-  const handleSendRejectionEmail = async (student: StudentRegistration) => {
-    setIsSendingEmail(true);
-    setEmailNotice(`Dispatching rejection email to ${student.email}...`);
-    const res = await sendRejectionEmail(student, student.rejectionReason);
-    setIsSendingEmail(false);
-    if (res.success) {
-      setEmailNotice(`✅ Rejection email delivered to ${student.email}`);
-      setTimeout(() => setEmailNotice(''), 7000);
+  const openRejectionModal = (student: StudentRegistration) => {
+    setRejectingStudent(student);
+    const existingPreset = REJECTION_REASONS.find(r => r.defaultText === student.rejectionReason);
+    if (existingPreset) {
+      setSelectedReasonId(existingPreset.id);
+      setRejectionExplanation(existingPreset.defaultText);
+    } else if (student.rejectionReason) {
+      setSelectedReasonId('CUSTOM');
+      setRejectionExplanation(student.rejectionReason);
     } else {
-      setEmailNotice(`❌ Failed to send rejection email: ${res.error || 'Check sender configuration'}`);
+      setSelectedReasonId('DUPLICATE_UTR');
+      setRejectionExplanation(REJECTION_REASONS[0].defaultText);
+    }
+    setShouldEmailStudent(true);
+  };
+
+  const closeRejectionModal = () => {
+    if (isSubmittingRejection) return;
+    setRejectingStudent(null);
+  };
+
+  const handleSelectReasonOption = (option: RejectionReasonOption) => {
+    setSelectedReasonId(option.id);
+    if (option.id !== 'CUSTOM') {
+      setRejectionExplanation(option.defaultText);
+    }
+  };
+
+  const handleConfirmRejection = async () => {
+    if (!rejectingStudent) return;
+    const finalReason = rejectionExplanation.trim() || 'Payment transaction could not be verified.';
+
+    setIsSubmittingRejection(true);
+    try {
+      const updated = updateRegistrationStatus(rejectingStudent.id, 'REJECTED', finalReason);
+      if (updated) {
+        setRegistrations(loadRegistrations());
+        if (selectedAttendee?.id === rejectingStudent.id) {
+          setSelectedAttendee(updated);
+        }
+
+        if (shouldEmailStudent) {
+          setEmailNotice(`Dispatching rejection email to ${updated.email}...`);
+          const emailRes = await sendRejectionEmail(updated, finalReason);
+          if (emailRes.success) {
+            setEmailNotice(`✅ Rejection email delivered to ${updated.email} (${emailRes.messageId || 'Delivered'})`);
+            setTimeout(() => setEmailNotice(''), 7000);
+          } else {
+            setEmailNotice(`⚠️ Status set to REJECTED, but email error: ${emailRes.error}`);
+            alert(
+              `Registration updated to REJECTED, but the rejection email failed to send:\n${emailRes.error}\n\nYou can click "Resend Rejection Email" on this record to retry.`
+            );
+          }
+        } else {
+          setEmailNotice(`✓ Status updated to REJECTED for ${updated.fullName} (Email skipped)`);
+          setTimeout(() => setEmailNotice(''), 5000);
+        }
+      }
+      setRejectingStudent(null);
+    } catch (err) {
+      console.error('Error during rejection process:', err);
+      alert(`Rejection error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmittingRejection(false);
+    }
+  };
+
+  const handleSendRejectionEmail = (student: StudentRegistration) => {
+    openRejectionModal(student);
+  };
+
+  const handleRejectTransaction = (id: string) => {
+    const student = registrations.find(r => r.id === id);
+    if (student) {
+      openRejectionModal(student);
     }
   };
 
@@ -270,35 +407,6 @@ export default function TicketAdminPage() {
       setTestEmailResult(`❌ Error: ${err instanceof Error ? err.message : 'Network error'}`);
     } finally {
       setIsSendingTestEmail(false);
-    }
-  };
-
-  const handleRejectTransaction = async (id: string) => {
-    const reason = window.prompt(
-      'Enter reason for transaction rejection (this explanation will be emailed to the student):',
-      'UPI reference number could not be matched with bank statements.'
-    );
-    if (reason !== null) {
-      const updated = updateRegistrationStatus(id, 'REJECTED', reason);
-      if (updated) {
-        setRegistrations(loadRegistrations());
-        if (selectedAttendee?.id === id) {
-          setSelectedAttendee(updated);
-        }
-
-        setEmailNotice(`Dispatching rejection email to ${updated.email}...`);
-        try {
-          const res = await sendRejectionEmail(updated, reason);
-          if (res.success) {
-            setEmailNotice(`✓ Rejection email delivered to ${updated.email}`);
-            setTimeout(() => setEmailNotice(''), 7000);
-          } else {
-            setEmailNotice(`⚠️ Status set to REJECTED, but email could not be sent: ${res.error}`);
-          }
-        } catch (err) {
-          setEmailNotice(`⚠️ Rejection email network error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        }
-      }
     }
   };
 
@@ -1680,6 +1788,205 @@ export default function TicketAdminPage() {
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs px-5 py-2.5 rounded-xl transition-colors cursor-pointer shadow-lg shadow-emerald-950/30"
                 >
                   Save Email Configuration
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─────────────────────────────────────────────────────────────
+            REJECTION REASON & EMAIL NOTIFICATION MODAL
+        ───────────────────────────────────────────────────────────── */}
+        {rejectingStudent && (
+          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-[#0A101D] border border-red-500/40 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl shadow-red-950/60 space-y-4 my-6 text-white animate-in fade-in zoom-in-95 duration-150">
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-[#1E293B] pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-600/60 flex items-center justify-center text-red-400 shrink-0">
+                    <ShieldAlert className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                      Reject Registration Application
+                      <span className="text-[10px] bg-red-950 border border-red-800 text-red-300 px-2 py-0.5 rounded font-mono uppercase">
+                        Admin Action
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Select reason and dispatch rejection notification to{' '}
+                      <span className="text-white font-semibold">{rejectingStudent.fullName}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSubmittingRejection}
+                  onClick={closeRejectionModal}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800/60 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Student Summary Strip */}
+              <div className="bg-[#050914] border border-[#1E293B] rounded-xl p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase">Reference ID</div>
+                  <div className="font-bold text-cyan-400 truncate">{rejectingStudent.bookingId}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase">Submitted UTR</div>
+                  <div className="font-bold text-amber-300 truncate" title={rejectingStudent.transactionId}>
+                    {rejectingStudent.transactionId}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase">Tier / Fee</div>
+                  <div className="font-bold text-emerald-400">
+                    ₹{rejectingStudent.amount} <span className="text-[10px] text-slate-400">({rejectingStudent.ticketTier.slice(0, 8)})</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase">Student Email</div>
+                  <div className="font-bold text-slate-200 truncate" title={rejectingStudent.email}>
+                    {rejectingStudent.email}
+                  </div>
+                </div>
+              </div>
+
+              {/* Screenshot Preview thumbnail if available */}
+              {rejectingStudent.paymentScreenshotBase64 && (
+                <div className="bg-[#060B14] border border-[#1E293B] rounded-xl p-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={rejectingStudent.paymentScreenshotBase64}
+                      alt="Payment proof"
+                      className="w-10 h-10 object-cover rounded-lg border border-slate-700"
+                    />
+                    <div className="text-xs">
+                      <div className="font-bold text-slate-200">Attached UPI Receipt</div>
+                      <div className="text-[10px] text-slate-400">Inspect bank UTR and timestamp</div>
+                    </div>
+                  </div>
+                  <a
+                    href={rejectingStudent.paymentScreenshotBase64}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-[#131D2E] hover:bg-[#1E293B] text-cyan-400 hover:text-cyan-300 px-3 py-1.5 rounded-lg text-xs font-mono flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>View Receipt ↗</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Preset Reason Selector (5 preset reasons + custom) */}
+              <div className="space-y-2">
+                <label className="text-xs font-mono uppercase font-bold text-slate-300 block">
+                  Select Reason for Rejection:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {REJECTION_REASONS.map(opt => {
+                    const isSelected = selectedReasonId === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleSelectReasonOption(opt)}
+                        className={`text-left p-2.5 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                          isSelected
+                            ? 'bg-red-950/50 border-red-500 shadow-md shadow-red-950/40 ring-1 ring-red-500/50'
+                            : 'bg-[#0B1322] border-[#1E293B] hover:border-slate-700 hover:bg-[#10192A]'
+                        }`}
+                      >
+                        <span className="text-base shrink-0 mt-0.5">{opt.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`text-xs font-bold leading-tight ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                              {opt.title}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5 leading-snug line-clamp-2">
+                            {opt.subtitle}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Editable Explanation for the Student */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono uppercase font-bold text-slate-300">
+                    Explanation to Student (Sent in Rejection Email):
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400">Editable preview</span>
+                </div>
+                <textarea
+                  value={rejectionExplanation}
+                  onChange={e => {
+                    setRejectionExplanation(e.target.value);
+                    if (selectedReasonId !== 'CUSTOM') {
+                      setSelectedReasonId('CUSTOM');
+                    }
+                  }}
+                  rows={3}
+                  placeholder="Provide a clear explanation for the student..."
+                  className="w-full bg-[#050914] border border-[#233147] focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-xl p-3 text-xs text-white outline-none font-mono leading-relaxed resize-none"
+                />
+              </div>
+
+              {/* Email Notification Option */}
+              <div className="bg-[#050914] border border-[#1E293B] rounded-xl p-3 flex items-center justify-between">
+                <label className="flex items-center gap-2.5 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={shouldEmailStudent}
+                    onChange={e => setShouldEmailStudent(e.target.checked)}
+                    className="w-4 h-4 accent-red-600 rounded cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold text-white">Send rejection email to student</span>
+                    <span className="text-[11px] text-slate-400 block font-mono">
+                      To: <span className="text-cyan-300">{rejectingStudent.email}</span> (via Awssbggcoek@gmail.com)
+                    </span>
+                  </div>
+                </label>
+                <span className="text-[10px] font-mono bg-red-950/60 border border-red-800/80 text-red-300 px-2 py-0.5 rounded uppercase">
+                  Automated
+                </span>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#1E293B]">
+                <button
+                  type="button"
+                  disabled={isSubmittingRejection}
+                  onClick={closeRejectionModal}
+                  className="bg-transparent hover:bg-[#1E293B] text-slate-400 hover:text-white px-4 py-2.5 rounded-xl text-xs font-mono transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmittingRejection}
+                  onClick={handleConfirmRejection}
+                  className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-mono font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-red-950/60 flex items-center gap-2"
+                >
+                  {isSubmittingRejection ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Dispatching Rejection & Email…</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-4 h-4" />
+                      <span>{shouldEmailStudent ? 'Confirm Rejection & Send Email' : 'Confirm Rejection (No Email)'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

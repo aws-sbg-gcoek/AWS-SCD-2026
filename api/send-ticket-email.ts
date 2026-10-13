@@ -28,22 +28,32 @@ export default async function handler(req: any, res: any) {
 
     // PATH 1: Direct Gmail delivery
     if (gmailUser && gmailPass) {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: gmailUser,
-          pass: String(gmailPass).replace(/\s+/g, ''),
-        },
-      });
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: gmailUser,
+            pass: String(gmailPass).replace(/\s+/g, ''),
+          },
+        });
 
-      const info = await transporter.sendMail({
-        from: `"AWS SCD 2026 Organizing Committee" <${gmailUser}>`,
-        to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
-        subject: payload.subject,
-        html: payload.html,
-      });
+        const info = await transporter.sendMail({
+          from: `"AWS SCD 2026 Organizing Committee" <${gmailUser}>`,
+          to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
+          subject: payload.subject,
+          text: payload.text || (typeof payload.html === 'string' ? payload.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
+          html: payload.html,
+          replyTo: `AWS SCD Support <${gmailUser}>`,
+        });
 
-      return res.status(200).json({ success: true, provider: 'gmail', id: info.messageId });
+        return res.status(200).json({ success: true, provider: 'gmail', id: info.messageId });
+      } catch (gmailErr: unknown) {
+        console.error('Gmail delivery error:', gmailErr);
+        if (!resendKey) {
+          throw gmailErr;
+        }
+        // If Resend key is available, proceed to fallback PATH 2 below
+      }
     }
 
     // PATH 2: Resend API fallback
@@ -59,6 +69,7 @@ export default async function handler(req: any, res: any) {
           from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
           to: Array.isArray(payload.to) ? payload.to : [payload.to],
           subject: payload.subject,
+          text: payload.text,
           html: payload.html,
         }),
       });

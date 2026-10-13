@@ -14,7 +14,7 @@ function emailDispatchPlugin(): Plugin {
     name: 'email-dispatch-handler',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (req.url === '/api/send-ticket-email' && req.method === 'POST') {
+        if (req.url?.startsWith('/api/send-ticket-email') && req.method === 'POST') {
           let body = '';
           req.on('data', chunk => {
             body += chunk;
@@ -42,7 +42,9 @@ function emailDispatchPlugin(): Plugin {
                   from: `"AWS SCD 2026 Organizing Committee" <${gmailUser}>`,
                   to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
                   subject: payload.subject,
+                  text: payload.text || (typeof payload.html === 'string' ? payload.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
                   html: payload.html,
+                  replyTo: `AWS SCD Support <${gmailUser}>`,
                 });
 
                 res.statusCode = 200;
