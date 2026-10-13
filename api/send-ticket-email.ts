@@ -22,6 +22,14 @@ export default async function handler(req: any, res: any) {
   try {
     const payload = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
 
+    let html = typeof payload.html === 'string' ? payload.html : '';
+    let text = typeof payload.text === 'string' ? payload.text : '';
+
+    // Auto-rewrite any legacy/broken aws-scd-ticket URLs to canonical public portal URL
+    const CANONICAL_REGISTER_URL = 'https://aws-scd-2026-public.vercel.app/register';
+    html = html.replace(/https:\/\/aws-scd-ticket\.vercel\.app[^\s"'<>]*/g, CANONICAL_REGISTER_URL);
+    text = text.replace(/https:\/\/aws-scd-ticket\.vercel\.app[^\s]*/g, CANONICAL_REGISTER_URL);
+
     const gmailUser = payload.gmailUser || process.env.VITE_GMAIL_USER || process.env.GMAIL_USER || 'Awssbggcoek@gmail.com';
     const gmailPass = payload.gmailPass || process.env.VITE_GMAIL_APP_PASSWORD || process.env.GMAIL_APP_PASSWORD || 'uoepgjczzkohretv';
     const resendKey = payload.apiKey || process.env.VITE_RESEND_API_KEY || process.env.RESEND_API_KEY;
@@ -41,8 +49,8 @@ export default async function handler(req: any, res: any) {
           from: `"AWS SCD 2026 Organizing Committee" <${gmailUser}>`,
           to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
           subject: payload.subject,
-          text: payload.text || (typeof payload.html === 'string' ? payload.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
-          html: payload.html,
+          text: text || (typeof html === 'string' ? html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
+          html: html,
           replyTo: `AWS SCD Support <${gmailUser}>`,
         });
 
@@ -69,8 +77,8 @@ export default async function handler(req: any, res: any) {
           from: sender.includes('<') ? sender : `AWS SCD 2026 <${sender}>`,
           to: Array.isArray(payload.to) ? payload.to : [payload.to],
           subject: payload.subject,
-          text: payload.text,
-          html: payload.html,
+          text: text,
+          html: html,
         }),
       });
 

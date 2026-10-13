@@ -24,6 +24,14 @@ function emailDispatchPlugin(): Plugin {
               const env = loadEnv(server.config.mode, process.cwd(), '');
               const payload = JSON.parse(body || '{}');
 
+              let html = typeof payload.html === 'string' ? payload.html : '';
+              let text = typeof payload.text === 'string' ? payload.text : '';
+
+              // Auto-rewrite any legacy/broken aws-scd-ticket URLs to canonical public portal URL
+              const CANONICAL_REGISTER_URL = 'https://aws-scd-2026-public.vercel.app/register';
+              html = html.replace(/https:\/\/aws-scd-ticket\.vercel\.app[^\s"'<>]*/g, CANONICAL_REGISTER_URL);
+              text = text.replace(/https:\/\/aws-scd-ticket\.vercel\.app[^\s]*/g, CANONICAL_REGISTER_URL);
+
               const gmailUser = payload.gmailUser || env.VITE_GMAIL_USER || env.GMAIL_USER || 'Awssbggcoek@gmail.com';
               const gmailPass = payload.gmailPass || env.VITE_GMAIL_APP_PASSWORD || env.GMAIL_APP_PASSWORD || 'uoepgjczzkohretv';
               const resendKey = payload.apiKey || env.VITE_RESEND_API_KEY || env.RESEND_API_KEY;
@@ -42,8 +50,8 @@ function emailDispatchPlugin(): Plugin {
                   from: `"AWS SCD 2026 Organizing Committee" <${gmailUser}>`,
                   to: Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
                   subject: payload.subject,
-                  text: payload.text || (typeof payload.html === 'string' ? payload.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
-                  html: payload.html,
+                  text: text || (typeof html === 'string' ? html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : ''),
+                  html: html,
                   replyTo: `AWS SCD Support <${gmailUser}>`,
                 });
 
