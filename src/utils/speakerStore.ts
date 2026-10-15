@@ -78,6 +78,52 @@ export const INITIAL_DEMO_SPEAKERS: SpeakerApplication[] = [
   },
 ];
 
+/**
+ * Strips all `undefined` values recursively so Firebase Firestore setDoc never throws.
+ */
+export function cleanForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = cleanForFirestore(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Normalizes a raw document snapshot into a strictly typed SpeakerApplication.
+ */
+export function parseSpeakerDoc(id: string, data: any): SpeakerApplication {
+  return {
+    id: id || data?.id || `SPK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    fullName: data?.fullName || 'Anonymous Speaker',
+    email: data?.email || '',
+    phone: data?.phone || '',
+    organization: data?.organization || '',
+    designation: data?.designation || '',
+    talkTitle: data?.talkTitle || 'Untitled Session',
+    sessionFormat: data?.sessionFormat || '30-min Technical Presentation',
+    audienceLevel: data?.audienceLevel || 'Level 100 - Beginner',
+    abstract: data?.abstract || '',
+    speakerPhotoBase64: data?.speakerPhotoBase64 || undefined,
+    certificateProofBase64: data?.certificateProofBase64 || undefined,
+    certificateLink: data?.certificateLink || undefined,
+    skills: Array.isArray(data?.skills) ? data.skills : [],
+    linkedin: data?.linkedin || undefined,
+    github: data?.github || undefined,
+    twitter: data?.twitter || undefined,
+    status: (data?.status as SpeakerStatus) || 'UNDER_REVIEW',
+    notes: data?.notes || '',
+    createdAt: data?.createdAt || new Date().toISOString(),
+    updatedAt: data?.updatedAt || new Date().toISOString(),
+  };
+}
+
 export function loadSpeakers(): SpeakerApplication[] {
   if (typeof window === 'undefined') return INITIAL_DEMO_SPEAKERS;
   try {
@@ -97,34 +143,41 @@ export function saveSpeakersToLocal(speakers: SpeakerApplication[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(SPEAKERS_STORAGE_KEY, JSON.stringify(speakers));
+    window.dispatchEvent(new CustomEvent('speakersUpdated', { detail: speakers }));
   } catch (err) {
     console.error('Failed to save speakers to localStorage', err);
   }
 }
 
 export async function saveSpeakerApplication(app: SpeakerApplication): Promise<void> {
+  const sanitizedApp: SpeakerApplication = {
+    ...app,
+    status: app.status || 'UNDER_REVIEW',
+    createdAt: app.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // 1. Update localStorage immediately
   const current = loadSpeakers();
-  const existingIdx = current.findIndex(s => s.id === app.id);
+  const existingIdx = current.findIndex(s => s.id === sanitizedApp.id);
   let updated: SpeakerApplication[];
   if (existingIdx >= 0) {
     updated = [...current];
-    updated[existingIdx] = app;
+    updated[existingIdx] = sanitizedApp;
   } else {
-    updated = [app, ...current];
+    updated = [sanitizedApp, ...current];
   }
   saveSpeakersToLocal(updated);
 
+  // 2. Persist to Firestore cloud database
   if (isFirebaseConfigured() && db) {
     try {
-      const cleanData: any = {};
-      for (const [k, v] of Object.entries(app)) {
-        if (v !== undefined) {
-          cleanData[k] = v;
-        }
-      }
-      await setDoc(doc(db, 'speaker_applications', app.id), cleanData, { merge: true });
-    } catch (err) {
-      console.warn('Firestore speaker save failed, using local storage', err);
+      const payload = cleanForFirestore(sanitizedApp);
+      await setDoc(doc(db, 'speaker_applications', sanitizedApp.id), payload, { merge: true });
+      console.log('✅ Speaker proposal successfully stored in Firestore:', sanitizedApp.id);
+    } catch (err: any) {
+      console.error('❌ Firestore speaker save error:', err);
+      throw new Error(`Failed to save proposal to cloud database: ${err.message || err}`);
     }
   }
 }
@@ -150,11 +203,14 @@ export async function updateSpeakerStatus(
 
   if (isFirebaseConfigured() && db) {
     try {
-      await updateDoc(doc(db, 'speaker_applications', id), {
+      const payload: Record<string, any> = {
         status,
-        ...(notes !== undefined ? { notes } : {}),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      if (notes !== undefined) {
+        payload.notes = notes;
+      }
+      await updateDoc(doc(db, 'speaker_applications', id), payload);
     } catch (err) {
       console.warn('Firestore speaker status update failed', err);
     }
@@ -176,6 +232,7 @@ export async function deleteSpeakerApplication(id: string): Promise<void> {
 }
 
 export function subscribeToSpeakers(callback: (speakers: SpeakerApplication[]) => void): () => void {
+  // Deliver current local state first
   callback(loadSpeakers());
 
   if (isFirebaseConfigured() && db) {
@@ -184,14 +241,18 @@ export function subscribeToSpeakers(callback: (speakers: SpeakerApplication[]) =
       const unsubscribe = onSnapshot(
         q,
         snapshot => {
-          if (!snapshot.empty) {
-            const remote: SpeakerApplication[] = [];
-            snapshot.forEach(docSnap => {
-              remote.push(docSnap.data() as SpeakerApplication);
-            });
-            remote.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const remote: SpeakerApplication[] = [];
+          snapshot.forEach(docSnap => {
+            remote.push(parseSpeakerDoc(docSnap.id, docSnap.data()));
+          });
+
+          remote.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+          if (remote.length > 0) {
             saveSpeakersToLocal(remote);
             callback(remote);
+          } else {
+            callback(loadSpeakers());
           }
         },
         error => {
@@ -199,19 +260,28 @@ export function subscribeToSpeakers(callback: (speakers: SpeakerApplication[]) =
           callback(loadSpeakers());
         }
       );
-      return unsubscribe;
+
+      const handleUpdate = () => callback(loadSpeakers());
+      window.addEventListener('speakersUpdated', handleUpdate);
+      window.addEventListener('storage', handleUpdate);
+
+      return () => {
+        unsubscribe();
+        window.removeEventListener('speakersUpdated', handleUpdate);
+        window.removeEventListener('storage', handleUpdate);
+      };
     } catch (err) {
       console.warn('Could not initialize Firestore speaker listener', err);
     }
   }
 
-  const handleStorage = (e: StorageEvent) => {
-    if (e.key === SPEAKERS_STORAGE_KEY) {
-      callback(loadSpeakers());
-    }
+  const handleUpdate = () => callback(loadSpeakers());
+  window.addEventListener('speakersUpdated', handleUpdate);
+  window.addEventListener('storage', handleUpdate);
+  return () => {
+    window.removeEventListener('speakersUpdated', handleUpdate);
+    window.removeEventListener('storage', handleUpdate);
   };
-  window.addEventListener('storage', handleStorage);
-  return () => window.removeEventListener('storage', handleStorage);
 }
 
 export function exportSpeakersToCSV(speakers: SpeakerApplication[]) {

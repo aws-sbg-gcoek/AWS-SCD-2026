@@ -1600,7 +1600,7 @@ export default function TicketAdminPage() {
                           : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
                       }`}
                     >
-                      {st === 'ALL' ? `All (${sponsors.length})` : st.replace('_', ' ')}
+                      {st === 'ALL' ? `All (${sponsors.length})` : (st || '').replace('_', ' ')}
                     </button>
                   ))}
                 </div>
@@ -1624,7 +1624,7 @@ export default function TicketAdminPage() {
                           {/* Top Row: Tier badge & Status */}
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded">
-                              {spn.tier} · {spn.price}
+                              {spn.tier || 'Sponsor'} · {spn.price || ''}
                             </span>
                             <span
                               className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border ${
@@ -1637,7 +1637,7 @@ export default function TicketAdminPage() {
                                   : 'bg-red-950 text-red-300 border-red-700'
                               }`}
                             >
-                              {spn.status}
+                              {(spn.status || 'PENDING').replace('_', ' ')}
                             </span>
                           </div>
 
@@ -1953,7 +1953,7 @@ export default function TicketAdminPage() {
                           : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
                       }`}
                     >
-                      {st === 'ALL' ? `All (${speakers.length})` : st.replace('_', ' ')}
+                      {st === 'ALL' ? `All (${speakers.length})` : (st || '').replace('_', ' ')}
                     </button>
                   ))}
                 </div>
@@ -1977,7 +1977,7 @@ export default function TicketAdminPage() {
                           {/* Top Row: Format & Status */}
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-mono text-[10px] font-bold text-indigo-300 bg-indigo-950/80 border border-indigo-700/60 px-2 py-0.5 rounded">
-                              {spk.sessionFormat}
+                              {spk.sessionFormat || 'Technical Session'}
                             </span>
                             <span
                               className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border ${
@@ -1990,7 +1990,7 @@ export default function TicketAdminPage() {
                                   : 'bg-red-950 text-red-300 border-red-700'
                               }`}
                             >
-                              {spk.status.replace('_', ' ')}
+                              {(spk.status || 'UNDER_REVIEW').replace('_', ' ')}
                             </span>
                           </div>
 
@@ -1999,24 +1999,24 @@ export default function TicketAdminPage() {
                             {spk.speakerPhotoBase64 ? (
                               <img
                                 src={spk.speakerPhotoBase64}
-                                alt={spk.fullName}
+                                alt={spk.fullName || 'Speaker'}
                                 onClick={() =>
                                   setLightboxImage({
                                     src: spk.speakerPhotoBase64!,
-                                    title: `${spk.fullName} - Speaker Profile`,
+                                    title: `${spk.fullName || 'Speaker'} - Speaker Profile`,
                                   })
                                 }
                                 className="w-14 h-14 object-cover rounded-xl border border-white/20 shrink-0 cursor-zoom-in"
                               />
                             ) : (
                               <div className="w-14 h-14 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-lg shrink-0">
-                                {spk.fullName.charAt(0)}
+                                {(spk.fullName || 'S').charAt(0).toUpperCase()}
                               </div>
                             )}
 
                             <div className="min-w-0 flex-1">
                               <h4 className="text-white font-bold text-base leading-tight truncate">
-                                {spk.fullName}
+                                {spk.fullName || 'Anonymous Speaker'}
                               </h4>
                               <p className="text-slate-300 text-xs mt-0.5 leading-snug">
                                 {spk.designation}

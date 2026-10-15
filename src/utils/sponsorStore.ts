@@ -71,6 +71,48 @@ export const INITIAL_DEMO_SPONSORS: SponsorApplication[] = [
   },
 ];
 
+/**
+ * Strips all `undefined` values recursively so Firebase Firestore setDoc never throws.
+ */
+export function cleanForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = cleanForFirestore(value);
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * Normalizes a raw document snapshot into a strictly typed SponsorApplication.
+ */
+export function parseSponsorDoc(id: string, data: any): SponsorApplication {
+  return {
+    id: id || data?.id || `SPN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    company: data?.company || 'Unnamed Sponsor',
+    contactName: data?.contactName || '',
+    email: data?.email || '',
+    phone: data?.phone || '',
+    website: data?.website || '',
+    industry: data?.industry || 'Technology & Software',
+    tier: data?.tier || 'Silver Sponsor',
+    price: data?.price || '₹10,000',
+    companyPhotoBase64: data?.companyPhotoBase64 || undefined,
+    showcaseInterests: Array.isArray(data?.showcaseInterests) ? data.showcaseInterests : [],
+    customShowcase: data?.customShowcase || '',
+    details: data?.details || '',
+    status: (data?.status as SponsorStatus) || 'PENDING',
+    notes: data?.notes || '',
+    createdAt: data?.createdAt || new Date().toISOString(),
+    updatedAt: data?.updatedAt || new Date().toISOString(),
+  };
+}
+
 export function loadSponsors(): SponsorApplication[] {
   if (typeof window === 'undefined') return INITIAL_DEMO_SPONSORS;
   try {
@@ -90,36 +132,41 @@ export function saveSponsorsToLocal(sponsors: SponsorApplication[]) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(SPONSORS_STORAGE_KEY, JSON.stringify(sponsors));
+    window.dispatchEvent(new CustomEvent('sponsorsUpdated', { detail: sponsors }));
   } catch (err) {
     console.error('Failed to save sponsors to localStorage', err);
   }
 }
 
 export async function saveSponsorApplication(app: SponsorApplication): Promise<void> {
-  // Save locally first
+  const sanitizedApp: SponsorApplication = {
+    ...app,
+    status: app.status || 'PENDING',
+    createdAt: app.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // 1. Save locally first
   const current = loadSponsors();
-  const existingIdx = current.findIndex(s => s.id === app.id);
+  const existingIdx = current.findIndex(s => s.id === sanitizedApp.id);
   let updated: SponsorApplication[];
   if (existingIdx >= 0) {
     updated = [...current];
-    updated[existingIdx] = app;
+    updated[existingIdx] = sanitizedApp;
   } else {
-    updated = [app, ...current];
+    updated = [sanitizedApp, ...current];
   }
   saveSponsorsToLocal(updated);
 
-  // Sync with Firestore if configured
+  // 2. Sync with Firestore cloud database
   if (isFirebaseConfigured() && db) {
     try {
-      const cleanData: any = {};
-      for (const [k, v] of Object.entries(app)) {
-        if (v !== undefined) {
-          cleanData[k] = v;
-        }
-      }
-      await setDoc(doc(db, 'sponsor_applications', app.id), cleanData, { merge: true });
-    } catch (err) {
-      console.warn('Firestore sponsor save failed, using local storage', err);
+      const payload = cleanForFirestore(sanitizedApp);
+      await setDoc(doc(db, 'sponsor_applications', sanitizedApp.id), payload, { merge: true });
+      console.log('✅ Sponsor application stored in Firestore successfully:', sanitizedApp.id);
+    } catch (err: any) {
+      console.error('❌ Firestore sponsor save error:', err);
+      throw new Error(`Failed to save sponsor application to cloud: ${err.message || err}`);
     }
   }
 }
@@ -145,11 +192,14 @@ export async function updateSponsorStatus(
 
   if (isFirebaseConfigured() && db) {
     try {
-      await updateDoc(doc(db, 'sponsor_applications', id), {
+      const payload: Record<string, any> = {
         status,
-        ...(notes !== undefined ? { notes } : {}),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      if (notes !== undefined) {
+        payload.notes = notes;
+      }
+      await updateDoc(doc(db, 'sponsor_applications', id), payload);
     } catch (err) {
       console.warn('Firestore sponsor status update failed', err);
     }
@@ -171,7 +221,7 @@ export async function deleteSponsorApplication(id: string): Promise<void> {
 }
 
 export function subscribeToSponsors(callback: (sponsors: SponsorApplication[]) => void): () => void {
-  // Initial local delivery
+  // Deliver current local state first
   callback(loadSponsors());
 
   if (isFirebaseConfigured() && db) {
@@ -180,14 +230,18 @@ export function subscribeToSponsors(callback: (sponsors: SponsorApplication[]) =
       const unsubscribe = onSnapshot(
         q,
         snapshot => {
-          if (!snapshot.empty) {
-            const remote: SponsorApplication[] = [];
-            snapshot.forEach(docSnap => {
-              remote.push(docSnap.data() as SponsorApplication);
-            });
-            remote.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const remote: SponsorApplication[] = [];
+          snapshot.forEach(docSnap => {
+            remote.push(parseSponsorDoc(docSnap.id, docSnap.data()));
+          });
+
+          remote.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+          if (remote.length > 0) {
             saveSponsorsToLocal(remote);
             callback(remote);
+          } else {
+            callback(loadSponsors());
           }
         },
         error => {
@@ -195,20 +249,28 @@ export function subscribeToSponsors(callback: (sponsors: SponsorApplication[]) =
           callback(loadSponsors());
         }
       );
-      return unsubscribe;
+
+      const handleUpdate = () => callback(loadSponsors());
+      window.addEventListener('sponsorsUpdated', handleUpdate);
+      window.addEventListener('storage', handleUpdate);
+
+      return () => {
+        unsubscribe();
+        window.removeEventListener('sponsorsUpdated', handleUpdate);
+        window.removeEventListener('storage', handleUpdate);
+      };
     } catch (err) {
       console.warn('Could not initialize Firestore sponsor listener', err);
     }
   }
 
-  // Poll localStorage as fallback for multi-tab updates
-  const handleStorage = (e: StorageEvent) => {
-    if (e.key === SPONSORS_STORAGE_KEY) {
-      callback(loadSponsors());
-    }
+  const handleUpdate = () => callback(loadSponsors());
+  window.addEventListener('sponsorsUpdated', handleUpdate);
+  window.addEventListener('storage', handleUpdate);
+  return () => {
+    window.removeEventListener('sponsorsUpdated', handleUpdate);
+    window.removeEventListener('storage', handleUpdate);
   };
-  window.addEventListener('storage', handleStorage);
-  return () => window.removeEventListener('storage', handleStorage);
 }
 
 export function exportSponsorsToCSV(sponsors: SponsorApplication[]) {
