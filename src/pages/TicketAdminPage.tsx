@@ -64,6 +64,25 @@ import {
 } from 'lucide-react';
 import { sendTicketEmailViaResend, sendRejectionEmail } from '../services/emailService';
 import TicketScanner from '../components/TicketScanner';
+import {
+  SponsorApplication,
+  SponsorStatus,
+  loadSponsors,
+  subscribeToSponsors,
+  updateSponsorStatus,
+  deleteSponsorApplication,
+  exportSponsorsToCSV,
+} from '../utils/sponsorStore';
+import {
+  SpeakerApplication,
+  SpeakerStatus,
+  loadSpeakers,
+  subscribeToSpeakers,
+  updateSpeakerStatus,
+  deleteSpeakerApplication,
+  exportSpeakersToCSV,
+} from '../utils/speakerStore';
+import { Building2, Briefcase, PhoneCall, Mic, Store, Globe, Linkedin, Github } from 'lucide-react';
 import { resetTicketCheckIn } from '../utils/registrationStore';
 
 export interface RejectionReasonOption {
@@ -140,7 +159,7 @@ export default function TicketAdminPage() {
   const [authError, setAuthError] = useState('');
 
   // Admin Navigation Tab
-  const [activeAdminTab, setActiveAdminTab] = useState<'tiers' | 'transactions' | 'scanner'>('transactions');
+  const [activeAdminTab, setActiveAdminTab] = useState<'transactions' | 'scanner' | 'sponsors' | 'speakers' | 'tiers'>('transactions');
 
   // Tier Configuration State
   const [config, setConfig] = useState<TicketSystemConfig>(() => loadTicketConfig());
@@ -152,6 +171,28 @@ export default function TicketAdminPage() {
     }, []);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  // Sponsors Application State
+  const [sponsors, setSponsors] = useState<SponsorApplication[]>(() => loadSponsors());
+  const [sponsorSearch, setSponsorSearch] = useState('');
+  const [sponsorStatusFilter, setSponsorStatusFilter] = useState<'ALL' | SponsorStatus>('ALL');
+  const [selectedSponsor, setSelectedSponsor] = useState<SponsorApplication | null>(null);
+
+  // Speakers / CFP Application State
+  const [speakers, setSpeakers] = useState<SpeakerApplication[]>(() => loadSpeakers());
+  const [speakerSearch, setSpeakerSearch] = useState('');
+  const [speakerStatusFilter, setSpeakerStatusFilter] = useState<'ALL' | SpeakerStatus>('ALL');
+  const [selectedSpeaker, setSelectedSpeaker] = useState<SpeakerApplication | null>(null);
+
+  // Live real-time listener for Sponsors and Speakers
+  useEffect(() => {
+    const unsubSponsors = subscribeToSponsors(data => setSponsors(data));
+    const unsubSpeakers = subscribeToSpeakers(data => setSpeakers(data));
+    return () => {
+      unsubSponsors();
+      unsubSpeakers();
+    };
+  }, []);
 
   // Registrations / Transaction ID Verification State
   const [registrations, setRegistrations] = useState<StudentRegistration[]>(() => loadRegistrations());
@@ -653,6 +694,42 @@ export default function TicketAdminPage() {
             {pendingCount > 0 && (
               <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-sans">
                 {pendingCount} Pending
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveAdminTab('sponsors')}
+            className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer ${
+              activeAdminTab === 'sponsors'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                : 'text-slate-300 hover:bg-[#162133]'
+            }`}
+          >
+            <Store className="w-4 h-4" />
+            <span>Sponsors</span>
+            {sponsors.filter(s => s.status === 'PENDING').length > 0 && (
+              <span className="bg-amber-950 border border-amber-600 text-amber-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+                {sponsors.filter(s => s.status === 'PENDING').length} New
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveAdminTab('speakers')}
+            className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer ${
+              activeAdminTab === 'speakers'
+                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                : 'text-slate-300 hover:bg-[#162133]'
+            }`}
+          >
+            <Mic className="w-4 h-4" />
+            <span>Speakers / CFP</span>
+            {speakers.filter(s => s.status === 'UNDER_REVIEW').length > 0 && (
+              <span className="bg-indigo-950 border border-indigo-600 text-indigo-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">
+                {speakers.filter(s => s.status === 'UNDER_REVIEW').length} In Review
               </span>
             )}
           </button>
