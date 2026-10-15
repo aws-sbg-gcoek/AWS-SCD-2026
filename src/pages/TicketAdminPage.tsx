@@ -82,7 +82,7 @@ import {
   deleteSpeakerApplication,
   exportSpeakersToCSV,
 } from '../utils/speakerStore';
-import { Building2, Briefcase, PhoneCall, Mic, Store, Globe, Linkedin, Github } from 'lucide-react';
+import { Building2, Briefcase, PhoneCall, Mic, Store, Globe, Linkedin, Github, User, Award } from 'lucide-react';
 import { resetTicketCheckIn } from '../utils/registrationStore';
 
 export interface RejectionReasonOption {
@@ -1481,6 +1481,748 @@ export default function TicketAdminPage() {
             )}
           </section>
         )}
+
+        {/* ─────────────────────────────────────────────────────────────
+            TAB: SPONSOR APPLICATIONS & PROPOSALS
+        ───────────────────────────────────────────────────────────── */}
+        {activeAdminTab === 'sponsors' && (() => {
+          const filteredSponsors = sponsors.filter(s => {
+            const matchesStatus = sponsorStatusFilter === 'ALL' || s.status === sponsorStatusFilter;
+            const q = sponsorSearch.toLowerCase().trim();
+            const matchesQuery =
+              !q ||
+              s.company.toLowerCase().includes(q) ||
+              s.contactName.toLowerCase().includes(q) ||
+              s.email.toLowerCase().includes(q) ||
+              s.phone.toLowerCase().includes(q) ||
+              s.tier.toLowerCase().includes(q) ||
+              s.industry.toLowerCase().includes(q);
+            return matchesStatus && matchesQuery;
+          });
+
+          const pendingSponsors = sponsors.filter(s => s.status === 'PENDING').length;
+          const contactedSponsors = sponsors.filter(s => s.status === 'CONTACTED').length;
+          const confirmedSponsors = sponsors.filter(s => s.status === 'CONFIRMED').length;
+
+          return (
+            <section className="space-y-6 animate-fade-in font-sans">
+              {/* Telemetry Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono">
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">New Inquiries</span>
+                    <strong className="text-2xl font-bold text-amber-400 mt-1 block">
+                      {pendingSponsors}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Awaiting contact</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Store className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">In Discussion</span>
+                    <strong className="text-2xl font-bold text-cyan-400 mt-1 block">
+                      {contactedSponsors}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Contacted sponsors</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <PhoneCall className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">Confirmed Grid</span>
+                    <strong className="text-2xl font-bold text-emerald-400 mt-1 block">
+                      {confirmedSponsors}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Locked partners</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">Total Proposals</span>
+                    <strong className="text-2xl font-bold text-white mt-1 block">
+                      {sponsors.length}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Applications received</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => exportSponsorsToCSV(sponsors)}
+                    className="bg-[#1E293B] hover:bg-[#2C3B52] border border-[#334155] text-xs px-3 py-2 rounded text-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter and Search Bar */}
+              <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    value={sponsorSearch}
+                    onChange={e => setSponsorSearch(e.target.value)}
+                    placeholder="Search by Company, Contact Person, Email, Phone, or Tier…"
+                    className="w-full bg-[#0B0F19] border border-[#243044] text-white font-mono text-xs pl-10 pr-8 py-2.5 rounded-lg outline-none focus:border-amber-400"
+                  />
+                  {sponsorSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setSponsorSearch('')}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
+                  {(['ALL', 'PENDING', 'CONTACTED', 'CONFIRMED', 'DECLINED'] as const).map(st => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setSponsorStatusFilter(st)}
+                      className={`text-xs font-mono px-3 py-2 rounded border transition-colors shrink-0 cursor-pointer ${
+                        sponsorStatusFilter === st
+                          ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                          : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {st === 'ALL' ? `All (${sponsors.length})` : st.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sponsors Cards / Grid View */}
+              {filteredSponsors.length === 0 ? (
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-8 text-center text-slate-500 font-mono text-xs">
+                  No sponsor proposals match your query.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredSponsors.map(spn => {
+                    const cleanPhone = (spn.phone || '').replace(/[^0-9]/g, '');
+                    return (
+                      <div
+                        key={spn.id}
+                        className="bg-[#131D2E] border border-[#233147] hover:border-amber-500/40 rounded-xl p-4 flex flex-col justify-between shadow-lg transition-all"
+                      >
+                        <div className="space-y-3">
+                          {/* Top Row: Tier badge & Status */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded">
+                              {spn.tier} · {spn.price}
+                            </span>
+                            <span
+                              className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border ${
+                                spn.status === 'CONFIRMED'
+                                  ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                                  : spn.status === 'CONTACTED'
+                                  ? 'bg-cyan-950 text-cyan-300 border-cyan-700'
+                                  : spn.status === 'PENDING'
+                                  ? 'bg-amber-950 text-amber-300 border-amber-700 animate-pulse'
+                                  : 'bg-red-950 text-red-300 border-red-700'
+                              }`}
+                            >
+                              {spn.status}
+                            </span>
+                          </div>
+
+                          {/* Company & Contact Info */}
+                          <div>
+                            <h4 className="text-white font-bold text-base leading-tight">
+                              {spn.company}
+                            </h4>
+                            <span className="text-[11px] font-mono text-slate-400 block mt-0.5">
+                              {spn.industry}
+                            </span>
+                            <div className="text-slate-300 text-xs mt-1.5 font-medium flex items-center gap-1.5">
+                              <User size={13} className="text-amber-400 shrink-0" />
+                              <span>{spn.contactName}</span>
+                            </div>
+                            <div className="text-slate-400 text-xs mt-0.5 flex items-center gap-1.5 font-mono">
+                              <Mail size={12} className="text-slate-500 shrink-0" />
+                              <span className="truncate">{spn.email}</span>
+                            </div>
+                            <div className="text-slate-400 text-xs mt-0.5 flex items-center gap-1.5 font-mono">
+                              <PhoneCall size={12} className="text-slate-500 shrink-0" />
+                              <span>{spn.phone}</span>
+                            </div>
+                          </div>
+
+                          {/* Company Photo / Logo Preview */}
+                          {spn.companyPhotoBase64 && (
+                            <div
+                              onClick={() =>
+                                setLightboxImage({
+                                  src: spn.companyPhotoBase64!,
+                                  title: `${spn.company} - Showroom / Stall Photo`,
+                                })
+                              }
+                              className="bg-[#080D18] border border-[#1E293B] hover:border-amber-400/50 rounded-lg p-2 flex items-center gap-3 cursor-pointer group transition-all"
+                            >
+                              <img
+                                src={spn.companyPhotoBase64}
+                                alt="Company stall preview"
+                                className="w-16 h-16 object-contain rounded bg-black group-hover:scale-105 transition-transform"
+                              />
+                              <div className="min-w-0">
+                                <span className="text-xs text-white font-medium block group-hover:text-amber-400">
+                                  View Showroom / Stall Photo
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  Click to enlarge &amp; inspect
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Showcase Tags */}
+                          {spn.showcaseInterests && spn.showcaseInterests.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] uppercase font-mono text-slate-400 block">
+                                Requested Features &amp; Showcase:
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {spn.showcaseInterests.map(interest => (
+                                  <span
+                                    key={interest}
+                                    className="text-[10px] bg-[#0B0F19] border border-[#243044] text-slate-300 px-2 py-0.5 rounded font-mono"
+                                  >
+                                    {interest}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Proposal Details / Custom Showcase */}
+                          {(spn.customShowcase || spn.details) && (
+                            <div className="bg-[#090E17] border border-[#1E293B] rounded-lg p-2.5 text-xs text-slate-300 leading-relaxed font-sans">
+                              {spn.customShowcase && (
+                                <p className="mb-1">
+                                  <strong className="text-amber-300 font-mono text-[10px] uppercase block">
+                                    Showcase Goals:
+                                  </strong>
+                                  {spn.customShowcase}
+                                </p>
+                              )}
+                              {spn.details && (
+                                <p className="text-slate-400 text-[11px]">
+                                  {spn.details}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Toolbar */}
+                        <div className="pt-4 border-t border-[#1E293B] mt-4 space-y-2">
+                          <div className="flex items-center gap-1.5">
+                            {cleanPhone && (
+                              <a
+                                href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                                  `Hello ${spn.contactName}, thank you for applying to sponsor AWS Student Community Day 2026 (${spn.tier})!`
+                                )}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <PhoneCall size={12} />
+                                <span>WhatsApp</span>
+                              </a>
+                            )}
+                            <a
+                              href={`mailto:${spn.email}?subject=${encodeURIComponent(
+                                `AWS Student Community Day 2026: ${spn.tier} Proposal`
+                              )}`}
+                              className="flex-1 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <Mail size={12} />
+                              <span>Email</span>
+                            </a>
+                            {spn.website && (
+                              <a
+                                href={spn.website}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-2 bg-[#0B0F19] hover:bg-slate-800 border border-[#233147] text-slate-300 rounded-lg"
+                                title="Open Website"
+                              >
+                                <Globe size={14} />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Delete sponsor application for ${spn.company}?`)) {
+                                  deleteSponsorApplication(spn.id);
+                                }
+                              }}
+                              className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-950/60 border border-transparent hover:border-red-900 rounded-lg transition-colors cursor-pointer"
+                              title="Delete application"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          {/* Status Progression Buttons */}
+                          <div className="grid grid-cols-4 gap-1 font-mono text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => updateSponsorStatus(spn.id, 'PENDING')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spn.status === 'PENDING'
+                                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Pending
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSponsorStatus(spn.id, 'CONTACTED')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spn.status === 'CONTACTED'
+                                  ? 'bg-cyan-500 text-slate-950 font-bold border-cyan-400'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Contacted
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSponsorStatus(spn.id, 'CONFIRMED')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spn.status === 'CONFIRMED'
+                                  ? 'bg-emerald-500 text-slate-950 font-bold border-emerald-400'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Confirm
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSponsorStatus(spn.id, 'DECLINED')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spn.status === 'DECLINED'
+                                  ? 'bg-red-950 text-red-300 font-bold border-red-700'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
+        {/* ─────────────────────────────────────────────────────────────
+            TAB: SPEAKER PROPOSALS & CFP PIPELINE
+        ───────────────────────────────────────────────────────────── */}
+        {activeAdminTab === 'speakers' && (() => {
+          const filteredSpeakers = speakers.filter(spk => {
+            const matchesStatus = speakerStatusFilter === 'ALL' || spk.status === speakerStatusFilter;
+            const q = speakerSearch.toLowerCase().trim();
+            const matchesQuery =
+              !q ||
+              spk.fullName.toLowerCase().includes(q) ||
+              spk.talkTitle.toLowerCase().includes(q) ||
+              spk.organization.toLowerCase().includes(q) ||
+              spk.email.toLowerCase().includes(q) ||
+              (spk.skills || []).some(s => s.toLowerCase().includes(q));
+            return matchesStatus && matchesQuery;
+          });
+
+          const inReviewSpeakers = speakers.filter(s => s.status === 'UNDER_REVIEW').length;
+          const shortlistedSpeakers = speakers.filter(s => s.status === 'SHORTLISTED').length;
+          const acceptedSpeakers = speakers.filter(s => s.status === 'ACCEPTED').length;
+
+          return (
+            <section className="space-y-6 animate-fade-in font-sans">
+              {/* Telemetry Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono">
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">In Review</span>
+                    <strong className="text-2xl font-bold text-indigo-400 mt-1 block">
+                      {inReviewSpeakers}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Awaiting committee</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <Mic className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">Shortlisted</span>
+                    <strong className="text-2xl font-bold text-amber-400 mt-1 block">
+                      {shortlistedSpeakers}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Round 2 evaluation</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">Accepted Grid</span>
+                    <strong className="text-2xl font-bold text-emerald-400 mt-1 block">
+                      {acceptedSpeakers}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Confirmed stage slots</span>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-slate-400 block uppercase">Total Proposals</span>
+                    <strong className="text-2xl font-bold text-white mt-1 block">
+                      {speakers.length}
+                    </strong>
+                    <span className="text-[10px] text-slate-500">Submissions received</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => exportSpeakersToCSV(speakers)}
+                    className="bg-[#1E293B] hover:bg-[#2C3B52] border border-[#334155] text-xs px-3 py-2 rounded text-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-400" />
+                    <span>CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter and Search Bar */}
+              <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    value={speakerSearch}
+                    onChange={e => setSpeakerSearch(e.target.value)}
+                    placeholder="Search by Speaker Name, Talk Title, Organization, Email, or Skill…"
+                    className="w-full bg-[#0B0F19] border border-[#243044] text-white font-mono text-xs pl-10 pr-8 py-2.5 rounded-lg outline-none focus:border-indigo-400"
+                  />
+                  {speakerSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setSpeakerSearch('')}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
+                  {(['ALL', 'UNDER_REVIEW', 'SHORTLISTED', 'ACCEPTED', 'DECLINED'] as const).map(st => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setSpeakerStatusFilter(st)}
+                      className={`text-xs font-mono px-3 py-2 rounded border transition-colors shrink-0 cursor-pointer ${
+                        speakerStatusFilter === st
+                          ? 'bg-indigo-600 text-white font-bold border-indigo-400'
+                          : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {st === 'ALL' ? `All (${speakers.length})` : st.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Speakers Cards / Grid View */}
+              {filteredSpeakers.length === 0 ? (
+                <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-8 text-center text-slate-500 font-mono text-xs">
+                  No speaker proposals match your query.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredSpeakers.map(spk => {
+                    const cleanPhone = (spk.phone || '').replace(/[^0-9]/g, '');
+                    return (
+                      <div
+                        key={spk.id}
+                        className="bg-[#131D2E] border border-[#233147] hover:border-indigo-500/40 rounded-xl p-4 flex flex-col justify-between shadow-lg transition-all"
+                      >
+                        <div className="space-y-3">
+                          {/* Top Row: Format & Status */}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-[10px] font-bold text-indigo-300 bg-indigo-950/80 border border-indigo-700/60 px-2 py-0.5 rounded">
+                              {spk.sessionFormat}
+                            </span>
+                            <span
+                              className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded border ${
+                                spk.status === 'ACCEPTED'
+                                  ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                                  : spk.status === 'SHORTLISTED'
+                                  ? 'bg-amber-950 text-amber-300 border-amber-700'
+                                  : spk.status === 'UNDER_REVIEW'
+                                  ? 'bg-indigo-950 text-indigo-300 border-indigo-700 animate-pulse'
+                                  : 'bg-red-950 text-red-300 border-red-700'
+                              }`}
+                            >
+                              {spk.status.replace('_', ' ')}
+                            </span>
+                          </div>
+
+                          {/* Speaker Profile Info */}
+                          <div className="flex items-start gap-3">
+                            {spk.speakerPhotoBase64 ? (
+                              <img
+                                src={spk.speakerPhotoBase64}
+                                alt={spk.fullName}
+                                onClick={() =>
+                                  setLightboxImage({
+                                    src: spk.speakerPhotoBase64!,
+                                    title: `${spk.fullName} - Speaker Profile`,
+                                  })
+                                }
+                                className="w-14 h-14 object-cover rounded-xl border border-white/20 shrink-0 cursor-zoom-in"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-lg shrink-0">
+                                {spk.fullName.charAt(0)}
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-white font-bold text-base leading-tight truncate">
+                                {spk.fullName}
+                              </h4>
+                              <p className="text-slate-300 text-xs mt-0.5 leading-snug">
+                                {spk.designation}
+                              </p>
+                              <span className="text-[11px] font-mono text-slate-400 block truncate">
+                                {spk.organization}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Talk Title */}
+                          <div className="bg-[#0B0F19] rounded-lg p-3 border border-[#1E293B]">
+                            <span className="text-[9px] uppercase font-mono text-aws-orange block font-bold mb-1">
+                              Proposed Session Title:
+                            </span>
+                            <h5 className="text-white font-semibold text-sm leading-snug">
+                              {spk.talkTitle}
+                            </h5>
+                            <span className="text-[10px] font-mono text-slate-400 block mt-1">
+                              Level: {spk.audienceLevel}
+                            </span>
+                          </div>
+
+                          {/* Skills & Custom Skill Tags */}
+                          {spk.skills && spk.skills.length > 0 && (
+                            <div className="space-y-1">
+                              <span className="text-[10px] uppercase font-mono text-slate-400 block">
+                                Technical Skills:
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {spk.skills.map(sk => (
+                                  <span
+                                    key={sk}
+                                    className="text-[10px] bg-indigo-950/60 border border-indigo-700/60 text-indigo-300 px-2 py-0.5 rounded font-mono font-medium"
+                                  >
+                                    {sk}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* AWS Certificate / Knowledge Proof Preview */}
+                          {(spk.certificateProofBase64 || spk.certificateLink) && (
+                            <div className="bg-[#080D18] border border-[#1E293B] rounded-lg p-2.5 space-y-1.5">
+                              <span className="text-[10px] uppercase font-mono text-amber-400 font-bold flex items-center gap-1">
+                                <Award size={12} />
+                                <span>AWS Knowledge Proof / Credential:</span>
+                              </span>
+                              <div className="flex items-center justify-between gap-2">
+                                {spk.certificateProofBase64 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setLightboxImage({
+                                        src: spk.certificateProofBase64!,
+                                        title: `${spk.fullName} - AWS Certificate Proof`,
+                                      })
+                                    }
+                                    className="text-xs font-mono text-amber-300 hover:text-white flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <span>Inspect Certificate Image ↗</span>
+                                  </button>
+                                ) : (
+                                  <span className="text-[11px] text-slate-400 font-mono">No image attached</span>
+                                )}
+
+                                {spk.certificateLink && (
+                                  <a
+                                    href={spk.certificateLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[11px] font-mono text-cyan-400 hover:underline flex items-center gap-0.5"
+                                  >
+                                    <span>Verify Link ↗</span>
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Session Abstract */}
+                          {spk.abstract && (
+                            <p className="text-xs text-slate-400 leading-relaxed font-sans line-clamp-3">
+                              {spk.abstract}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Action Toolbar */}
+                        <div className="pt-4 border-t border-[#1E293B] mt-4 space-y-2">
+                          <div className="flex items-center gap-1.5">
+                            {cleanPhone && (
+                              <a
+                                href={`https://wa.me/${cleanPhone}?text=${encodeURIComponent(
+                                  `Hello ${spk.fullName}, regarding your session proposal '${spk.talkTitle}' for AWS Student Community Day 2026...`
+                                )}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <PhoneCall size={12} />
+                                <span>WhatsApp</span>
+                              </a>
+                            )}
+                            <a
+                              href={`mailto:${spk.email}?subject=${encodeURIComponent(
+                                `AWS Student Community Day 2026: Speaker Proposal '${spk.talkTitle}'`
+                              )}`}
+                              className="flex-1 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <Mail size={12} />
+                              <span>Email</span>
+                            </a>
+                            {spk.linkedin && (
+                              <a
+                                href={spk.linkedin}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-2 bg-[#0B0F19] hover:bg-slate-800 border border-[#233147] text-blue-400 rounded-lg"
+                                title="LinkedIn Profile"
+                              >
+                                <Linkedin size={14} />
+                              </a>
+                            )}
+                            {spk.github && (
+                              <a
+                                href={spk.github}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="p-2 bg-[#0B0F19] hover:bg-slate-800 border border-[#233147] text-slate-300 rounded-lg"
+                                title="GitHub Profile"
+                              >
+                                <Github size={14} />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Delete speaker proposal for ${spk.fullName}?`)) {
+                                  deleteSpeakerApplication(spk.id);
+                                }
+                              }}
+                              className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-950/60 border border-transparent hover:border-red-900 rounded-lg transition-colors cursor-pointer"
+                              title="Delete proposal"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          {/* Status Progression Buttons */}
+                          <div className="grid grid-cols-4 gap-1 font-mono text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => updateSpeakerStatus(spk.id, 'UNDER_REVIEW')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spk.status === 'UNDER_REVIEW'
+                                  ? 'bg-indigo-600 text-white font-bold border-indigo-400'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Review
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSpeakerStatus(spk.id, 'SHORTLISTED')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spk.status === 'SHORTLISTED'
+                                  ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Shortlist
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSpeakerStatus(spk.id, 'ACCEPTED')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spk.status === 'ACCEPTED'
+                                  ? 'bg-emerald-500 text-slate-950 font-bold border-emerald-400'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateSpeakerStatus(spk.id, 'DECLINED')}
+                              className={`py-1 rounded border cursor-pointer ${
+                                spk.status === 'DECLINED'
+                                  ? 'bg-red-950 text-red-300 font-bold border-red-700'
+                                  : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* ─────────────────────────────────────────────────────────────
             TAB 2: TICKET TIERS & SCHEDULES (ORIGINAL ADMIN SETTINGS)
