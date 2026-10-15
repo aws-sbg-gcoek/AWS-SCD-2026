@@ -49,12 +49,18 @@ import {
   ExternalLink,
   Trash2,
   ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize2,
+  Grid,
+  List,
   Mail,
   ScanLine,
   Loader2,
   Settings,
   Send,
   HelpCircle,
+  Receipt,
 } from 'lucide-react';
 import { sendTicketEmailViaResend, sendRejectionEmail } from '../services/emailService';
 import TicketScanner from '../components/TicketScanner';
@@ -138,6 +144,12 @@ export default function TicketAdminPage() {
 
   // Tier Configuration State
   const [config, setConfig] = useState<TicketSystemConfig>(() => loadTicketConfig());
+
+    // Live sync with real-time Firestore and local updates
+    useEffect(() => {
+      const unsub = subscribeToTicketConfig(liveConfig => setConfig(liveConfig));
+      return () => unsub();
+    }, []);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
@@ -146,6 +158,22 @@ export default function TicketAdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | VerificationStatus>('ALL');
   const [selectedAttendee, setSelectedAttendee] = useState<StudentRegistration | null>(null);
+  const [zoomIdCard, setZoomIdCard] = useState<number>(1);
+  const [rotIdCard, setRotIdCard] = useState<number>(0);
+  const [zoomReceipt, setZoomReceipt] = useState<number>(1);
+  const [rotReceipt, setRotReceipt] = useState<number>(0);
+  const [mobileCompareTab, setMobileCompareTab] = useState<'both' | 'id' | 'receipt'>('both');
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; title: string } | null>(null);
+  const [adminViewMode, setAdminViewMode] = useState<'table' | 'cards'>('table');
+
+  const openCompareModal = (attendee: StudentRegistration) => {
+    setSelectedAttendee(attendee);
+    setZoomIdCard(1);
+    setRotIdCard(0);
+    setZoomReceipt(1);
+    setRotReceipt(0);
+    setMobileCompareTab('both');
+  };
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [emailNotice, setEmailNotice] = useState<string>('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -533,57 +561,57 @@ export default function TicketAdminPage() {
   return (
     <div className="min-h-screen bg-[#0B0F19] text-[#E2E8F0] font-sans pb-16">
       {/* Top Navigation */}
-      <header className="border-b border-[#1E293B] bg-[#111827] sticky top-0 z-40 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-amber-500/10 border border-amber-500/30 rounded flex items-center justify-center text-amber-400 font-mono font-bold">
-              <Sliders className="w-5 h-5" />
+      <header className="border-b border-[#1E293B] bg-[#111827] sticky top-0 z-40 px-3 sm:px-6 py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-amber-500/10 border border-amber-500/30 rounded flex items-center justify-center text-amber-400 font-mono font-bold shrink-0">
+              <Sliders className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-white tracking-tight">
-                  Ticket Tier & Transaction Controller
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-sm sm:text-base md:text-lg font-bold text-white tracking-tight truncate">
+                  Ticket Tier & Verification Controller
                 </h1>
-                <span className="text-[10px] font-mono uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 px-2 py-0.5 rounded">
-                  Live Sync
+                <span className="text-[9px] sm:text-[10px] font-mono uppercase bg-emerald-950/80 text-emerald-400 border border-emerald-700/60 px-1.5 py-0.5 rounded shrink-0">
+                  Live
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono">
+              <p className="text-[10px] sm:text-xs text-slate-400 font-mono truncate hidden sm:block">
                 Verify student UPI transactions, issue passes & configure timing
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Email Dispatch Settings Trigger */}
             <button
               type="button"
               onClick={() => setShowEmailSettingsModal(true)}
-              className="bg-[#1E293B] hover:bg-[#2A3B52] border border-[#334155] text-slate-200 text-xs font-mono px-3 py-1.5 rounded flex items-center gap-2 transition-colors cursor-pointer"
+              className="bg-[#1E293B] hover:bg-[#2A3B52] border border-[#334155] text-slate-200 text-xs font-mono px-2.5 sm:px-3 py-1.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Configure Gmail / Resend automated email dispatch"
             >
               <Mail className="w-3.5 h-3.5 text-indigo-400" />
               <span className="hidden md:inline">Email Sender</span>
               {senderGmailUser && senderGmailPass ? (
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-950/80 border border-emerald-700/60 px-1.5 py-0.5 rounded font-bold">
+                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] text-emerald-400 bg-emerald-950/80 border border-emerald-700/60 px-1.5 py-0.5 rounded font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Gmail Active
+                  <span className="hidden sm:inline">Gmail</span> Active
                 </span>
               ) : senderResendKey ? (
-                <span className="inline-flex items-center gap-1 text-[10px] text-cyan-400 bg-cyan-950/80 border border-cyan-700/60 px-1.5 py-0.5 rounded font-bold">
+                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] text-cyan-400 bg-cyan-950/80 border border-cyan-700/60 px-1.5 py-0.5 rounded font-bold">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                   Resend
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.5 rounded font-bold animate-pulse">
-                  Setup Email
+                <span className="inline-flex items-center gap-1 text-[9px] sm:text-[10px] text-amber-400 bg-amber-950/80 border border-amber-700/60 px-1.5 py-0.5 rounded font-bold animate-pulse">
+                  Setup
                 </span>
               )}
             </button>
 
-            {/* Live Clock */}
-            <div className="hidden sm:flex items-center gap-2 bg-[#1E293B] border border-[#334155] px-3 py-1.5 rounded font-mono text-xs text-slate-300">
-              <Clock className="w-4 h-4 text-amber-400" />
+            {/* Live Clock (Desktop & Tablet) */}
+            <div className="hidden md:flex items-center gap-1.5 bg-[#1E293B] border border-[#334155] px-2.5 py-1.5 rounded font-mono text-xs text-slate-300">
+              <Clock className="w-3.5 h-3.5 text-amber-400" />
               <span>
                 {currentTime.toLocaleTimeString('en-IN', {
                   hour: '2-digit',
@@ -597,31 +625,31 @@ export default function TicketAdminPage() {
 
             <button
               onClick={handleLogout}
-              className="bg-[#1E293B] hover:bg-[#334155] text-slate-300 hover:text-white text-xs font-mono px-3 py-2 rounded flex items-center gap-1.5 transition-colors border border-[#334155]"
+              className="bg-[#1E293B] hover:bg-[#334155] text-slate-300 hover:text-white text-xs font-mono px-2.5 sm:px-3 py-1.5 rounded flex items-center gap-1 transition-colors border border-[#334155] cursor-pointer"
               title="Logout"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Exit</span>
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Exit</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+      <main className="max-w-7xl mx-auto p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-6">
         {/* Navigation Tabs: Transactions vs Tiers vs Gate Scanner */}
-        <div className="flex flex-wrap border-b border-[#233147] gap-2 pb-2">
+        <div className="flex items-center gap-2 border-b border-[#233147] pb-2 overflow-x-auto whitespace-nowrap scrollbar-none">
           <button
             type="button"
             onClick={() => setActiveAdminTab('transactions')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer ${
               activeAdminTab === 'transactions'
                 ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                 : 'text-slate-300 hover:bg-[#162133]'
             }`}
           >
             <ShieldAlert className="w-4 h-4" />
-            <span>Transaction Verifications</span>
+            <span>Verifications</span>
             {pendingCount > 0 && (
               <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-sans">
                 {pendingCount} Pending
@@ -632,7 +660,7 @@ export default function TicketAdminPage() {
           <button
             type="button"
             onClick={() => setActiveAdminTab('scanner')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer ${
               activeAdminTab === 'scanner'
                 ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
                 : 'text-slate-300 hover:bg-[#162133]'
@@ -650,7 +678,7 @@ export default function TicketAdminPage() {
           <button
             type="button"
             onClick={() => setActiveAdminTab('tiers')}
-            className={`flex items-center gap-2 px-5 py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-lg font-mono text-xs uppercase font-bold tracking-wider shrink-0 transition-all cursor-pointer ${
               activeAdminTab === 'tiers'
                 ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                 : 'text-slate-300 hover:bg-[#162133]'
@@ -750,7 +778,7 @@ export default function TicketAdminPage() {
             </div>
 
             {/* Filter and Search Bar */}
-            <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-3 sm:p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
@@ -758,59 +786,339 @@ export default function TicketAdminPage() {
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   placeholder="Search by Transaction ID / UTR, Student Name, Email, or College…"
-                  className="w-full bg-[#0B0F19] border border-[#243044] text-white font-mono text-xs pl-10 pr-3 py-2.5 rounded-lg outline-none focus:border-amber-400"
+                  className="w-full bg-[#0B0F19] border border-[#243044] text-white font-mono text-xs pl-10 pr-8 py-2.5 rounded-lg outline-none focus:border-amber-400"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white cursor-pointer"
+                    title="Clear search"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 overflow-x-auto">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('ALL')}
-                  className={`text-xs font-mono px-3 py-2 rounded border transition-colors ${
-                    statusFilter === 'ALL'
-                      ? 'bg-slate-200 text-slate-950 font-bold border-white'
-                      : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All ({registrations.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('UNDER_SURVEILLANCE')}
-                  className={`text-xs font-mono px-3 py-2 rounded border transition-colors flex items-center gap-1.5 ${
-                    statusFilter === 'UNDER_SURVEILLANCE'
-                      ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
-                      : 'bg-[#0B0F19] border-[#243044] text-amber-400 hover:text-amber-300'
-                  }`}
-                >
-                  <span>Under Surveillance ({pendingCount})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('APPROVED')}
-                  className={`text-xs font-mono px-3 py-2 rounded border transition-colors flex items-center gap-1.5 ${
-                    statusFilter === 'APPROVED'
-                      ? 'bg-emerald-500 text-slate-950 font-bold border-emerald-400'
-                      : 'bg-[#0B0F19] border-[#243044] text-emerald-400 hover:text-emerald-300'
-                  }`}
-                >
-                  <span>Approved ({approvedCount})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('REJECTED')}
-                  className={`text-xs font-mono px-3 py-2 rounded border transition-colors ${
-                    statusFilter === 'REJECTED'
-                      ? 'bg-red-500 text-white font-bold border-red-400'
-                      : 'bg-[#0B0F19] border-[#243044] text-red-400 hover:text-red-300'
-                  }`}
-                >
-                  Rejected
-                </button>
+              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
+                <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('ALL')}
+                    className={`text-xs font-mono px-3 py-2 rounded border transition-colors shrink-0 cursor-pointer ${
+                      statusFilter === 'ALL'
+                        ? 'bg-slate-200 text-slate-950 font-bold border-white'
+                        : 'bg-[#0B0F19] border-[#243044] text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    All ({registrations.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('UNDER_SURVEILLANCE')}
+                    className={`text-xs font-mono px-3 py-2 rounded border transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      statusFilter === 'UNDER_SURVEILLANCE'
+                        ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
+                        : 'bg-[#0B0F19] border-[#243044] text-amber-400 hover:text-amber-300'
+                    }`}
+                  >
+                    <span>Under Surveillance ({pendingCount})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('APPROVED')}
+                    className={`text-xs font-mono px-3 py-2 rounded border transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                      statusFilter === 'APPROVED'
+                        ? 'bg-emerald-500 text-slate-950 font-bold border-emerald-400'
+                        : 'bg-[#0B0F19] border-[#243044] text-emerald-400 hover:text-emerald-300'
+                    }`}
+                  >
+                    <span>Approved ({approvedCount})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('REJECTED')}
+                    className={`text-xs font-mono px-3 py-2 rounded border transition-colors shrink-0 cursor-pointer ${
+                      statusFilter === 'REJECTED'
+                        ? 'bg-red-500 text-white font-bold border-red-400'
+                        : 'bg-[#0B0F19] border-[#243044] text-red-400 hover:text-red-300'
+                    }`}
+                  >
+                    Rejected
+                  </button>
+                </div>
+
+                {/* View Mode Toggle (Table vs Mobile Touch Cards) */}
+                <div className="flex items-center gap-1 bg-[#0B0F19] p-1 rounded-lg border border-[#243044] shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAdminViewMode('table')}
+                    className={`px-2.5 py-1.5 rounded text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                      adminViewMode === 'table'
+                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Tabular view with side scroll"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Table</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAdminViewMode('cards')}
+                    className={`px-2.5 py-1.5 rounded text-xs font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                      adminViewMode === 'cards'
+                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Card view (optimized for mobile & touch)"
+                  >
+                    <Grid className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Cards</span>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Registrations Table */}
+            {/* Registrations Display (Table vs Mobile Touch Cards) */}
+            {adminViewMode === 'cards' ? (
+              <div className="space-y-4">
+                {/* Mobile / Card Count Bar */}
+                <div className="flex items-center justify-between text-xs font-mono text-slate-400 px-1">
+                  <span>Displaying <strong className="text-amber-400">{filteredRegistrations.length}</strong> Registrations</span>
+                  <span className="text-[11px] text-slate-500">Tap cards or proofs to inspect</span>
+                </div>
+
+                {filteredRegistrations.length === 0 ? (
+                  <div className="bg-[#131D2E] border border-[#233147] rounded-xl p-8 text-center text-slate-500 font-mono text-xs">
+                    No student registrations match your filter or search query.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {filteredRegistrations.map(reg => {
+                      const isPending = reg.status === 'UNDER_SURVEILLANCE';
+                      const isApproved = reg.status === 'APPROVED';
+                      const isRejected = reg.status === 'REJECTED';
+
+                      return (
+                        <div
+                          key={reg.id}
+                          className="bg-[#131D2E] border border-[#233147] hover:border-amber-500/40 rounded-xl p-4 flex flex-col justify-between shadow-lg transition-all"
+                        >
+                          <div className="space-y-3">
+                            {/* Top Row: Status badge & Tier amount */}
+                            <div className="flex items-center justify-between gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider ${
+                                  isApproved
+                                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
+                                    : isPending
+                                    ? 'bg-amber-950 text-amber-300 border border-amber-700 animate-pulse'
+                                    : 'bg-red-950 text-red-300 border border-red-700'
+                                }`}
+                              >
+                                {isApproved && <Check className="w-3 h-3 text-emerald-400" />}
+                                {isPending && <Clock className="w-3 h-3 text-amber-400" />}
+                                {isRejected && <AlertCircle className="w-3 h-3 text-red-400" />}
+                                <span>{reg.status.replace('_', ' ')}</span>
+                              </span>
+
+                              <div className="text-right">
+                                <span className="text-amber-400 font-mono font-bold text-sm">
+                                  ₹{reg.amount}
+                                </span>
+                                <span className="text-[10px] text-slate-400 block font-mono">
+                                  {reg.ticketTier} Pass
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Student Info */}
+                            <div>
+                              <h4 className="text-white font-semibold text-base leading-tight">
+                                {reg.fullName}
+                              </h4>
+                              <p className="text-slate-400 text-xs mt-0.5 truncate" title={reg.collegeName}>
+                                {reg.collegeName}
+                              </p>
+                              <div className="text-slate-500 text-[11px] font-mono flex flex-wrap gap-x-2 mt-1">
+                                <span>PRN: <strong className="text-slate-300">{reg.prnRollNo}</strong></span>
+                                <span>·</span>
+                                <span className="text-slate-400 truncate max-w-[180px]">{reg.email}</span>
+                              </div>
+                            </div>
+
+                            {/* UTR / Transaction ID */}
+                            <div className="bg-[#0B0F19] rounded-lg p-2.5 border border-[#1E293B] flex items-center justify-between font-mono text-xs">
+                              <div className="min-w-0 pr-2">
+                                <span className="text-[9px] text-slate-400 uppercase block tracking-wider">
+                                  Transaction ID / UTR
+                                </span>
+                                <span className="text-amber-300 font-bold text-xs truncate block select-all">
+                                  {reg.transactionId}
+                                </span>
+                                <span className="text-[10px] text-slate-500 block">
+                                  Ref: {reg.bookingId}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(reg.transactionId, reg.id)}
+                                className="p-1.5 rounded hover:bg-[#1E293B] text-slate-400 hover:text-white transition-colors cursor-pointer shrink-0"
+                                title="Copy Transaction ID"
+                              >
+                                {copiedId === reg.id ? (
+                                  <Check className="w-4 h-4 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Verification Proofs (Thumbnails with fast click to inspect) */}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <div
+                                onClick={() => openCompareModal(reg)}
+                                className="bg-[#080D18] border border-[#1E293B] hover:border-amber-400/50 rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer group transition-all"
+                              >
+                                {reg.paymentScreenshotBase64 ? (
+                                  <img
+                                    src={reg.paymentScreenshotBase64}
+                                    alt="Receipt"
+                                    className="w-full h-24 object-contain rounded group-hover:scale-105 transition-transform"
+                                  />
+                                ) : (
+                                  <span className="text-slate-500 text-[10px]">No Receipt</span>
+                                )}
+                                <span className="text-[10px] font-mono text-slate-400 mt-1 flex items-center gap-1 group-hover:text-amber-400">
+                                  <Receipt className="w-3 h-3 text-amber-400" />
+                                  <span>UPI Receipt</span>
+                                </span>
+                              </div>
+
+                              <div
+                                onClick={() => openCompareModal(reg)}
+                                className="bg-[#080D18] border border-[#1E293B] hover:border-indigo-400/50 rounded-lg p-2 flex flex-col items-center justify-center cursor-pointer group transition-all"
+                              >
+                                {reg.idProofBase64 ? (
+                                  <img
+                                    src={reg.idProofBase64}
+                                    alt="College ID"
+                                    className="w-full h-24 object-contain rounded group-hover:scale-105 transition-transform"
+                                  />
+                                ) : (
+                                  <span className="text-slate-500 text-[10px]">No ID Attached</span>
+                                )}
+                                <span className="text-[10px] font-mono text-slate-400 mt-1 flex items-center gap-1 group-hover:text-indigo-400">
+                                  <UserCheck className="w-3 h-3 text-indigo-400" />
+                                  <span>College ID</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="pt-4 border-t border-[#1E293B] mt-4 flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openCompareModal(reg)}
+                                className="flex-1 bg-[#182337] hover:bg-[#22314d] border border-[#2A374D] text-white text-xs font-mono py-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Inspect & Compare</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAttendee(reg.id, reg.fullName)}
+                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-950/70 border border-[#233147] hover:border-red-900 rounded-lg transition-colors cursor-pointer"
+                                title={`Delete registration for ${reg.fullName}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            {isPending && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  disabled={approvingId === reg.id}
+                                  onClick={() => handleApproveTransaction(reg.id)}
+                                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold py-2 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                >
+                                  {approvingId === reg.id ? (
+                                    <>
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span>Approving…</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check className="w-3 h-3" />
+                                      <span>Approve Pass</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRejectTransaction(reg.id)}
+                                  className="bg-red-950/80 hover:bg-red-900 border border-red-800 text-red-300 font-bold py-2 rounded-lg text-xs font-mono transition-colors cursor-pointer"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            )}
+
+                            {isApproved && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={isSendingEmail}
+                                  onClick={() => handleSendTicketEmail(reg)}
+                                  className="flex-1 bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 py-2 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                >
+                                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                                  <span>Email Pass</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSetSurveillance(reg.id)}
+                                  className="px-3 py-2 rounded-lg bg-[#0B0F19] border border-[#233147] text-slate-400 hover:text-amber-400 text-xs font-mono cursor-pointer"
+                                >
+                                  Revert
+                                </button>
+                              </div>
+                            )}
+
+                            {isRejected && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  disabled={isSendingEmail}
+                                  onClick={() => handleSendRejectionEmail(reg)}
+                                  className="flex-1 bg-red-950/80 hover:bg-red-900 border border-red-700/60 text-red-300 py-2 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                >
+                                  <Mail className="w-3.5 h-3.5 text-red-400" />
+                                  <span>Email Rejection</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={approvingId === reg.id}
+                                  onClick={() => handleApproveTransaction(reg.id)}
+                                  className="px-3 py-2 rounded-lg bg-emerald-950 border border-emerald-700 text-emerald-300 text-xs font-mono hover:bg-emerald-900 cursor-pointer"
+                                >
+                                  {approvingId === reg.id ? '…' : 'Re-approve'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+            /* Registrations Table */
             <div className="bg-[#131D2E] border border-[#233147] rounded-xl overflow-hidden shadow-xl">
               {/* Mobile swipe hint banner */}
               <div className="md:hidden px-4 py-2 bg-[#0E1624] text-[10px] font-mono text-slate-400 flex items-center justify-between border-b border-[#233147]">
@@ -888,7 +1196,7 @@ export default function TicketAdminPage() {
                                 {/* UPI Receipt Thumbnail */}
                                 {reg.paymentScreenshotBase64 ? (
                                   <div
-                                    onClick={() => setSelectedAttendee(reg)}
+                                    onClick={() => openCompareModal(reg)}
                                     className="group relative cursor-pointer"
                                     title="Click to compare payment screenshot"
                                   >
@@ -910,7 +1218,7 @@ export default function TicketAdminPage() {
                                 {/* Student ID Card Thumbnail */}
                                 {reg.idProofBase64 ? (
                                   <div
-                                    onClick={() => setSelectedAttendee(reg)}
+                                    onClick={() => openCompareModal(reg)}
                                     className="group relative cursor-pointer"
                                     title="Click to compare college ID card"
                                   >
@@ -1067,7 +1375,7 @@ export default function TicketAdminPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedAttendee(reg)}
+                                  onClick={() => openCompareModal(reg)}
                                   className="text-slate-300 hover:text-white px-2.5 py-1.5 rounded bg-[#0B0F19] hover:bg-[#1A2538] border border-[#243044] text-[11px] font-semibold"
                                   title="Compare payment receipt and college ID side-by-side"
                                 >
@@ -1093,6 +1401,7 @@ export default function TicketAdminPage() {
                 </table>
               </div>
             </div>
+            )}
           </section>
         )}
 
@@ -1246,7 +1555,7 @@ export default function TicketAdminPage() {
                         <div className="grid grid-cols-3 gap-2">
                           <button
                             type="button"
-                            onClick={() => updateTier(key, { manualStatus: 'open' })}
+                            onClick={() => updateTier(key, { manualStatus: 'open', mode: 'manual', remaining: (tier.remaining && tier.remaining > 0) ? tier.remaining : 100 })}
                             className={`p-2 rounded text-xs font-mono font-bold uppercase border ${
                               tier.manualStatus === 'open'
                                 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
@@ -1257,7 +1566,7 @@ export default function TicketAdminPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => updateTier(key, { manualStatus: 'sold_out' })}
+                            onClick={() => updateTier(key, { manualStatus: 'sold_out', mode: 'manual', remaining: 0 })}
                             className={`p-2 rounded text-xs font-mono font-bold uppercase border ${
                               tier.manualStatus === 'sold_out'
                                 ? 'bg-red-500/20 border-red-400 text-red-300'
@@ -1268,7 +1577,7 @@ export default function TicketAdminPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => updateTier(key, { manualStatus: 'coming_soon' })}
+                            onClick={() => updateTier(key, { manualStatus: 'coming_soon', mode: 'manual' })}
                             className={`p-2 rounded text-xs font-mono font-bold uppercase border ${
                               tier.manualStatus === 'coming_soon'
                                 ? 'bg-amber-500/20 border-amber-400 text-amber-300'
@@ -1308,16 +1617,16 @@ export default function TicketAdminPage() {
           />
         )}
 
-        {/* High-Efficiency Side-by-Side Verification & Comparison Modal */}
+        {/* High-Efficiency Large Side-by-Side Verification & Comparison Modal */}
         {selectedAttendee && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-            <div className="bg-[#131D2E] border border-[#233147] rounded-2xl max-w-4xl w-full p-4 sm:p-7 shadow-2xl space-y-5 animate-scale-up my-auto max-h-[92vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 overflow-y-auto">
+            <div className="bg-[#0B111E] border border-[#233147] rounded-2xl w-full max-w-[98vw] 2xl:max-w-7xl max-h-[96vh] p-3.5 sm:p-5 lg:p-6 shadow-2xl flex flex-col space-y-3.5 my-auto overflow-y-auto animate-scale-up">
               {/* Modal Top Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#233147]">
-                <div>
-                  <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#233147]">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-mono uppercase bg-indigo-950/80 text-indigo-400 border border-indigo-700/60 px-2 py-0.5 rounded font-bold">
-                      Proof Comparison
+                      Interactive Proof Inspection
                     </span>
                     <span
                       className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
@@ -1330,16 +1639,25 @@ export default function TicketAdminPage() {
                     >
                       {selectedAttendee.status.replace('_', ' ')}
                     </span>
+                    <span className="text-[10px] font-mono text-slate-400 bg-[#121A2A] px-2 py-0.5 rounded border border-[#1E293B]">
+                      Pass: ₹{selectedAttendee.amount} ({selectedAttendee.ticketTier})
+                    </span>
                   </div>
-                  <h3 className="text-xl font-bold text-white mt-1">
+                  <h3 className="text-lg sm:text-2xl font-bold text-white mt-1 tracking-tight truncate">
                     {selectedAttendee.fullName}
                   </h3>
-                  <p className="text-xs text-slate-400 font-mono">
-                    Ref: {selectedAttendee.bookingId} · PRN: {selectedAttendee.prnRollNo} · {selectedAttendee.email}
+                  <p className="text-[11px] sm:text-xs text-slate-400 font-mono flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                    <span>Ref: <strong className="text-cyan-400">{selectedAttendee.bookingId}</strong></span>
+                    <span>·</span>
+                    <span>PRN: <strong className="text-amber-300">{selectedAttendee.prnRollNo}</strong></span>
+                    <span>·</span>
+                    <span className="truncate max-w-xs">{selectedAttendee.collegeName}</span>
+                    <span>·</span>
+                    <span className="text-slate-300">{selectedAttendee.email}</span>
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   {/* Delete Student Button */}
                   <button
                     type="button"
@@ -1348,80 +1666,230 @@ export default function TicketAdminPage() {
                     title="Permanently delete this registration"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete</span>
+                    <span className="hidden sm:inline">Delete</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setSelectedAttendee(null)}
-                    className="p-1.5 hover:bg-[#1E293B] rounded-lg text-slate-400 hover:text-white transition-colors"
+                    className="p-1.5 hover:bg-[#1E293B] rounded-lg text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    title="Close comparison modal"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Side-by-Side Comparison Columns */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 font-mono text-xs">
+              {/* Mobile / Tablet Segmented View Switcher */}
+              <div className="flex items-center justify-between gap-2 bg-[#060A13] p-1.5 rounded-xl border border-[#1E293B] text-xs font-mono">
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-slate-400 px-2 hidden sm:inline">View Mode:</span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileCompareTab('both')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors font-bold cursor-pointer ${
+                      mobileCompareTab === 'both'
+                        ? 'bg-amber-500 text-slate-950'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    ⇄ Side-by-Side
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileCompareTab('id')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors font-bold cursor-pointer ${
+                      mobileCompareTab === 'id'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    🪪 College ID Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobileCompareTab('receipt')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors font-bold cursor-pointer ${
+                      mobileCompareTab === 'receipt'
+                        ? 'bg-emerald-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    📸 UPI Receipt Only
+                  </button>
+                </div>
+
+                <span className="text-[10px] text-slate-500 hidden md:inline">
+                  Click images to open Full-Screen Lightbox · Use Zoom & Rotate to verify UTR
+                </span>
+              </div>
+
+              {/* Side-by-Side Comparison Columns (Large High-Resolution Layout) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 font-mono text-xs">
                 {/* ─────────────────────────────────────────────────────────────
                     LEFT COLUMN: STUDENT COLLEGE ID / ALLOTMENT PROOF
                 ───────────────────────────────────────────────────────────── */}
-                <div className="bg-[#0B0F19] border border-[#243044] rounded-xl p-4 space-y-3 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-[#1E293B]">
+                <div
+                  className={`bg-[#070D18] border border-[#233147] rounded-xl p-3 sm:p-4 space-y-3 flex flex-col justify-between ${
+                    mobileCompareTab === 'receipt' ? 'hidden md:flex' : 'flex'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    {/* Header & Image Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#1E293B]">
                       <span className="text-xs uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1.5">
                         <span>🪪 Student College ID Card</span>
                       </span>
-                      {selectedAttendee.idProofBase64 && (
-                        <a
-                          href={selectedAttendee.idProofBase64}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-1"
+
+                      {/* Interactive Zoom & Rotate Controls */}
+                      <div className="flex items-center gap-1 bg-[#0F172A] border border-[#1E293B] rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => setZoomIdCard(prev => Math.max(0.75, Number((prev - 0.25).toFixed(2))))}
+                          className="p-1 hover:bg-[#1E293B] rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+                          title="Zoom Out"
                         >
-                          <span>Open Full ID ↗</span>
-                        </a>
-                      )}
+                          <ZoomOut className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZoomIdCard(1)}
+                          className="px-1.5 py-0.5 text-[10px] font-bold text-indigo-300 hover:text-white cursor-pointer"
+                          title="Reset Zoom to 100%"
+                        >
+                          {Math.round(zoomIdCard * 100)}%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZoomIdCard(prev => Math.min(3, Number((prev + 0.25).toFixed(2))))}
+                          className="p-1 hover:bg-[#1E293B] rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+                          title="Zoom In"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRotIdCard(prev => (prev + 90) % 360)}
+                          className="p-1 hover:bg-[#1E293B] rounded text-slate-300 hover:text-white transition-colors ml-1 cursor-pointer"
+                          title="Rotate 90° Clockwise"
+                        >
+                          <RotateCw className="w-3.5 h-3.5" />
+                        </button>
+                        {selectedAttendee.idProofBase64 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLightboxImage({
+                                src: selectedAttendee.idProofBase64!,
+                                title: `${selectedAttendee.fullName} - College ID Card`,
+                              })
+                            }
+                            className="p-1 hover:bg-[#1E293B] rounded text-indigo-400 hover:text-white transition-colors cursor-pointer"
+                            title="Open Fullscreen Lightbox"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {selectedAttendee.idProofBase64 && (
+                          <a
+                            href={selectedAttendee.idProofBase64}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-0.5 text-[10px] text-indigo-400 hover:text-indigo-200 hover:underline border-l border-[#1E293B] ml-1 flex items-center gap-0.5"
+                            title="Open Original Image in New Tab"
+                          >
+                            <span>Tab ↗</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
 
-                    {/* ID Card Image Preview */}
-                    <div className="mt-3 border border-[#1E293B] rounded-lg overflow-hidden bg-black/50 min-h-[220px] max-h-[300px] flex items-center justify-center p-1">
+                    {/* ID Card Image Preview Viewport (Significantly enlarged) */}
+                    <div className="border border-[#1E293B] rounded-xl overflow-hidden bg-[#03060E] h-[380px] sm:h-[460px] md:h-[520px] lg:h-[600px] xl:h-[640px] flex items-center justify-center p-2 relative group select-none">
                       {selectedAttendee.idProofBase64 ? (
-                        <img
-                          src={selectedAttendee.idProofBase64}
-                          alt="Student College ID Card"
-                          className="max-h-[290px] w-auto object-contain mx-auto rounded shadow"
-                        />
+                        <div className="w-full h-full flex items-center justify-center overflow-auto cursor-zoom-in">
+                          <img
+                            src={selectedAttendee.idProofBase64}
+                            alt="Student College ID Card"
+                            style={{
+                              transform: `scale(${zoomIdCard}) rotate(${rotIdCard}deg)`,
+                              transition: 'transform 0.15s ease-out',
+                            }}
+                            onClick={() =>
+                              setLightboxImage({
+                                src: selectedAttendee.idProofBase64!,
+                                title: `${selectedAttendee.fullName} - College ID Card`,
+                              })
+                            }
+                            className="max-h-full max-w-full object-contain mx-auto rounded shadow-2xl transition-all"
+                          />
+                        </div>
                       ) : (
-                        <div className="text-center py-12 text-slate-500">
-                          <span className="text-2xl block mb-1">🪪</span>
-                          <span>No ID card image attached</span>
+                        <div className="text-center py-16 text-slate-500">
+                          <span className="text-3xl block mb-2">🪪</span>
+                          <span className="text-sm">No college ID image attached</span>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Student Details Summary */}
-                  <div className="bg-[#121A2A] rounded-lg p-3 space-y-1.5 text-[11px] border border-[#1E293B]">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Name:</span>
-                      <strong className="text-white">{selectedAttendee.fullName}</strong>
+                  <div className="bg-[#0D1525] rounded-xl p-3.5 space-y-2 text-xs border border-[#1E293B]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Student Name:</span>
+                      <div className="flex items-center gap-1.5">
+                        <strong className="text-white font-sans text-sm">{selectedAttendee.fullName}</strong>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(selectedAttendee.fullName, `name-${selectedAttendee.id}`)}
+                          className="text-slate-400 hover:text-white cursor-pointer"
+                          title="Copy Student Name"
+                        >
+                          {copiedId === `name-${selectedAttendee.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">PRN / Roll:</span>
-                      <strong className="text-amber-300">{selectedAttendee.prnRollNo}</strong>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">PRN / Roll No:</span>
+                      <div className="flex items-center gap-1.5">
+                        <strong className="text-amber-300 font-mono text-sm">{selectedAttendee.prnRollNo}</strong>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(selectedAttendee.prnRollNo, `prn-${selectedAttendee.id}`)}
+                          className="text-slate-400 hover:text-white cursor-pointer"
+                          title="Copy PRN"
+                        >
+                          {copiedId === `prn-${selectedAttendee.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">College:</span>
-                      <span className="text-slate-200 truncate max-w-[200px]" title={selectedAttendee.collegeName}>
+
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-slate-400 shrink-0">College:</span>
+                      <span className="text-slate-200 text-right font-medium">
                         {selectedAttendee.collegeName}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+
+                    <div className="flex items-center justify-between">
                       <span className="text-slate-400">Branch & Year:</span>
-                      <span className="text-slate-200">
+                      <span className="text-cyan-300 font-semibold">
                         {selectedAttendee.branch} ({selectedAttendee.academicYear})
                       </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-[#1E293B] text-[11px]">
+                      <span className="text-slate-400">Phone: {selectedAttendee.phone || 'N/A'}</span>
+                      <span className="text-slate-400 truncate max-w-[200px]">{selectedAttendee.email}</span>
                     </div>
                   </div>
                 </div>
@@ -1429,62 +1897,164 @@ export default function TicketAdminPage() {
                 {/* ─────────────────────────────────────────────────────────────
                     RIGHT COLUMN: UPI PAYMENT RECEIPT / SCREENSHOT
                 ───────────────────────────────────────────────────────────── */}
-                <div className="bg-[#0B0F19] border border-[#243044] rounded-xl p-4 space-y-3 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between pb-2 border-b border-[#1E293B]">
+                <div
+                  className={`bg-[#070D18] border border-[#233147] rounded-xl p-3 sm:p-4 space-y-3 flex flex-col justify-between ${
+                    mobileCompareTab === 'id' ? 'hidden md:flex' : 'flex'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    {/* Header & Image Toolbar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#1E293B]">
                       <span className="text-xs uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1.5">
-                        <span>📸 UPI Payment Screenshot</span>
+                        <span>📸 UPI Payment Screenshot & UTR</span>
                       </span>
-                      {selectedAttendee.paymentScreenshotBase64 && (
-                        <a
-                          href={selectedAttendee.paymentScreenshotBase64}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[11px] text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1"
+
+                      {/* Interactive Zoom & Rotate Controls */}
+                      <div className="flex items-center gap-1 bg-[#0F172A] border border-[#1E293B] rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => setZoomReceipt(prev => Math.max(0.75, Number((prev - 0.25).toFixed(2))))}
+                          className="p-1 hover:bg-[#1E293B] rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+                          title="Zoom Out"
                         >
-                          <span>Open Full Receipt ↗</span>
-                        </a>
-                      )}
+                          <ZoomOut className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZoomReceipt(1)}
+                          className="px-1.5 py-0.5 text-[10px] font-bold text-emerald-300 hover:text-white cursor-pointer"
+                          title="Reset Zoom to 100%"
+                        >
+                          {Math.round(zoomReceipt * 100)}%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZoomReceipt(prev => Math.min(3, Number((prev + 0.25).toFixed(2))))}
+                          className="p-1 hover:bg-[#1E293B] rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+                          title="Zoom In"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRotReceipt(prev => (prev + 90) % 360)}
+                          className="p-1 hover:bg-[#1E293B] rounded text-slate-300 hover:text-white transition-colors ml-1 cursor-pointer"
+                          title="Rotate 90° Clockwise"
+                        >
+                          <RotateCw className="w-3.5 h-3.5" />
+                        </button>
+                        {selectedAttendee.paymentScreenshotBase64 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLightboxImage({
+                                src: selectedAttendee.paymentScreenshotBase64!,
+                                title: `${selectedAttendee.fullName} - UPI Payment Screenshot`,
+                              })
+                            }
+                            className="p-1 hover:bg-[#1E293B] rounded text-emerald-400 hover:text-white transition-colors cursor-pointer"
+                            title="Open Fullscreen Lightbox"
+                          >
+                            <Maximize2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {selectedAttendee.paymentScreenshotBase64 && (
+                          <a
+                            href={selectedAttendee.paymentScreenshotBase64}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2 py-0.5 text-[10px] text-emerald-400 hover:text-emerald-200 hover:underline border-l border-[#1E293B] ml-1 flex items-center gap-0.5"
+                            title="Open Original Image in New Tab"
+                          >
+                            <span>Tab ↗</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Payment Screenshot Image Preview */}
-                    <div className="mt-3 border border-[#1E293B] rounded-lg overflow-hidden bg-black/50 min-h-[220px] max-h-[300px] flex items-center justify-center p-1">
+                    {/* Payment Screenshot Image Preview Viewport (Significantly enlarged) */}
+                    <div className="border border-[#1E293B] rounded-xl overflow-hidden bg-[#03060E] h-[380px] sm:h-[460px] md:h-[520px] lg:h-[600px] xl:h-[640px] flex items-center justify-center p-2 relative group select-none">
                       {selectedAttendee.paymentScreenshotBase64 ? (
-                        <img
-                          src={selectedAttendee.paymentScreenshotBase64}
-                          alt="UPI Payment receipt"
-                          className="max-h-[290px] w-auto object-contain mx-auto rounded shadow"
-                        />
+                        <div className="w-full h-full flex items-center justify-center overflow-auto cursor-zoom-in">
+                          <img
+                            src={selectedAttendee.paymentScreenshotBase64}
+                            alt="UPI Payment receipt"
+                            style={{
+                              transform: `scale(${zoomReceipt}) rotate(${rotReceipt}deg)`,
+                              transition: 'transform 0.15s ease-out',
+                            }}
+                            onClick={() =>
+                              setLightboxImage({
+                                src: selectedAttendee.paymentScreenshotBase64!,
+                                title: `${selectedAttendee.fullName} - UPI Payment Screenshot`,
+                              })
+                            }
+                            className="max-h-full max-w-full object-contain mx-auto rounded shadow-2xl transition-all"
+                          />
+                        </div>
                       ) : (
-                        <div className="text-center py-12 text-slate-500">
-                          <span className="text-2xl block mb-1">📸</span>
-                          <span>No payment screenshot uploaded</span>
+                        <div className="text-center py-16 text-slate-500">
+                          <span className="text-3xl block mb-2">📸</span>
+                          <span className="text-sm">No payment screenshot attached</span>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Transaction Details Summary */}
-                  <div className="bg-[#121A2A] rounded-lg p-3 space-y-1.5 text-[11px] border border-[#1E293B]">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">UTR / Ref:</span>
-                      <strong className="text-amber-300 select-all font-mono">
-                        {selectedAttendee.transactionId}
-                      </strong>
+                  <div className="bg-[#0D1525] rounded-xl p-3.5 space-y-2 text-xs border border-[#1E293B]">
+                    {/* Bank UTR / Reference ID in large, prominent copy box */}
+                    <div className="flex items-center justify-between p-2.5 bg-[#070D18] border border-amber-500/40 rounded-lg">
+                      <div>
+                        <span className="text-[10px] text-amber-400 uppercase tracking-widest font-mono block">
+                          Bank UTR / Transaction ID
+                        </span>
+                        <strong className="text-sm sm:text-base font-mono text-white tracking-wider select-all">
+                          {selectedAttendee.transactionId}
+                        </strong>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(selectedAttendee.transactionId, `utr-${selectedAttendee.id}`)}
+                        className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 px-3 py-1.5 rounded text-xs font-mono font-bold flex items-center gap-1 transition-all cursor-pointer shadow"
+                        title="Copy UTR to verify in banking app"
+                      >
+                        {copiedId === `utr-${selectedAttendee.id}` ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy UTR</span>
+                          </>
+                        )}
+                      </button>
                     </div>
+
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Amount Paid:</span>
-                      <strong className="text-emerald-400 text-sm">
-                        ₹{selectedAttendee.amount} ({selectedAttendee.ticketTier})
-                      </strong>
+                      <div className="flex items-center gap-2">
+                        <strong className="text-emerald-400 text-base font-bold">
+                          ₹{selectedAttendee.amount}
+                        </strong>
+                        <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-mono">
+                          {selectedAttendee.ticketTier}
+                        </span>
+                      </div>
                     </div>
+
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Payee Account:</span>
-                      <span className="text-slate-200">Bhushan Jadhav (aj6244249-1@okaxis)</span>
+                      <span className="text-slate-200 font-mono text-[11px]">Bhushan Jadhav (aj6244249-1@okaxis)</span>
                     </div>
+
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400">Pass Code:</span>
-                      <span className="text-slate-300 font-mono font-bold text-amber-300">{selectedAttendee.ticketCode || 'Generated upon approval'}</span>
+                      <span className="text-amber-300 font-mono font-bold">
+                        {selectedAttendee.ticketCode || 'Auto-generated on approval'}
+                      </span>
                     </div>
 
                     {/* Gate Check-in Status & Unique QR */}
@@ -1514,9 +2084,6 @@ export default function TicketAdminPage() {
                               ACTIVE (UNSCANNED)
                             </span>
                           )}
-                          <span className="text-[9px] text-slate-500 block">
-                            Strict 1-time gate entry enforced
-                          </span>
                         </div>
 
                         {selectedAttendee.ticketCode && (
@@ -1526,7 +2093,7 @@ export default function TicketAdminPage() {
                                 `AWS-SCD-2026|${selectedAttendee.ticketCode}|${selectedAttendee.fullName}|${selectedAttendee.bookingId}`
                               )}`}
                               alt="Ticket QR"
-                              className="w-12 h-12 object-contain"
+                              className="w-11 h-11 object-contain"
                             />
                             <span className="text-[7px] font-mono font-bold text-slate-900 block">
                               {selectedAttendee.ticketCode}
@@ -1545,8 +2112,8 @@ export default function TicketAdminPage() {
                 </div>
               )}
 
-              {/* Action Buttons Footer */}
-              <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#233147]">
+              {/* Action Buttons Footer (Sticky & Accessible) */}
+              <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#233147] bg-[#0B111E] sticky bottom-0">
                 {selectedAttendee.status === 'UNDER_SURVEILLANCE' ? (
                   <>
                     <button
@@ -1580,7 +2147,7 @@ export default function TicketAdminPage() {
                   <button
                     type="button"
                     onClick={() => handleSetSurveillance(selectedAttendee.id)}
-                    className="flex-1 bg-amber-600/30 hover:bg-amber-600/40 border border-amber-600 text-amber-300 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm font-mono uppercase tracking-wider transition-colors"
+                    className="flex-1 bg-amber-600/30 hover:bg-amber-600/40 border border-amber-600 text-amber-300 font-bold py-3 px-4 rounded-xl text-xs sm:text-sm font-mono uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     Reset Status to Under Surveillance
                   </button>
@@ -1614,14 +2181,60 @@ export default function TicketAdminPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleDeleteAttendee(selectedAttendee.id, selectedAttendee.fullName)}
-                  className="bg-transparent hover:bg-red-950/50 text-red-400 hover:text-red-300 border border-red-900/60 px-4 py-3 rounded-xl text-xs font-mono uppercase flex items-center gap-1.5 transition-colors cursor-pointer"
-                  title="Delete student registration permanently"
+                  onClick={() => setSelectedAttendee(null)}
+                  className="bg-[#1E293B] hover:bg-[#2A374D] text-slate-300 hover:text-white px-5 py-3 rounded-xl text-xs font-mono uppercase transition-colors cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Record</span>
+                  Close
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Fullscreen High-Resolution Lightbox Inspector */}
+        {lightboxImage && (
+          <div
+            className="fixed inset-0 z-60 bg-black/95 backdrop-blur-lg flex flex-col items-center justify-center p-3 sm:p-6 select-none animate-in fade-in duration-150"
+            onClick={() => setLightboxImage(null)}
+          >
+            <div
+              className="absolute top-4 inset-x-4 sm:inset-x-8 flex items-center justify-between z-10 bg-[#0B101B]/80 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-white text-xs sm:text-sm font-bold font-mono truncate">
+                  {lightboxImage.title}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={lightboxImage.src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-amber-400 hover:text-amber-300 font-mono flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Original ↗</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightboxImage(null)}
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs px-3 font-mono cursor-pointer transition-colors"
+                >
+                  Close [✕]
+                </button>
+              </div>
+            </div>
+            <div
+              className="max-h-[85vh] max-w-[95vw] flex items-center justify-center mt-12 p-2 overflow-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <img
+                src={lightboxImage.src}
+                alt={lightboxImage.title}
+                className="max-h-[82vh] max-w-[94vw] object-contain rounded-xl shadow-2xl border border-white/20"
+              />
             </div>
           </div>
         )}
