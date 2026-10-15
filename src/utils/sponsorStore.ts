@@ -111,7 +111,13 @@ export async function saveSponsorApplication(app: SponsorApplication): Promise<v
   // Sync with Firestore if configured
   if (isFirebaseConfigured() && db) {
     try {
-      await setDoc(doc(db, 'sponsor_applications', app.id), app, { merge: true });
+      const cleanData: any = {};
+      for (const [k, v] of Object.entries(app)) {
+        if (v !== undefined) {
+          cleanData[k] = v;
+        }
+      }
+      await setDoc(doc(db, 'sponsor_applications', app.id), cleanData, { merge: true });
     } catch (err) {
       console.warn('Firestore sponsor save failed, using local storage', err);
     }

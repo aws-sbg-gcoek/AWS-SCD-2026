@@ -116,7 +116,13 @@ export async function saveSpeakerApplication(app: SpeakerApplication): Promise<v
 
   if (isFirebaseConfigured() && db) {
     try {
-      await setDoc(doc(db, 'speaker_applications', app.id), app, { merge: true });
+      const cleanData: any = {};
+      for (const [k, v] of Object.entries(app)) {
+        if (v !== undefined) {
+          cleanData[k] = v;
+        }
+      }
+      await setDoc(doc(db, 'speaker_applications', app.id), cleanData, { merge: true });
     } catch (err) {
       console.warn('Firestore speaker save failed, using local storage', err);
     }
